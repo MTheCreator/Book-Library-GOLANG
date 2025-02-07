@@ -1,0 +1,399 @@
+[
+  {
+    "timestamp": "2025-01-13T11:59:53.1062792+01:00",
+    "total_revenue": 0,
+    "total_orders": 3,
+    "top_selling_books": [
+      {
+        "book": {
+          "id": 4,
+          "title": "Go Programming Language",
+          "author": {
+            "id": 1,
+            "first_name": "",
+            "last_name": "",
+            "bio": "Author of many programming books."
+          },
+          "genres": [
+            "Programming",
+            "Technology"
+          ],
+          "published_at": "0001-01-01T00:00:00Z",
+          "price": 45.99,
+          "stock": 10
+        },
+        "quantity_sold": 4
+      },
+      {
+        "book": {
+          "id": 1,
+          "title": "The Great Novel",
+          "author": {
+            "id": 4,
+            "first_name": "",
+            "last_name": "",
+            "bio": ""
+          },
+          "genres": [
+            "Fiction",
+            "Drama"
+          ],
+          "published_at": "0001-01-01T00:00:00Z",
+          "price": 19.99,
+          "stock": 50
+        },
+        "quantity_sold": 2
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-01-13T12:41:28.5368571+01:00",
+    "total_revenue": 39.98,
+    "total_orders": 1,
+    "top_selling_books": [
+      {
+        "book": {
+          "id": 1,
+          "title": "The Great Novel",
+          "author": {
+            "id": 1,
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "bio": "Author of best-selling novels."
+          },
+          "genres": [
+            "Fiction",
+            "Drama"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 19.99,
+          "stock": 50
+        },
+        "quantity_sold": 2
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-01-13T12:57:26.3823399+01:00",
+    "total_revenue": 439.93,
+    "total_orders": 7,
+    "top_selling_books": [
+      {
+        "book": {
+          "id": 1,
+          "title": "The Great Novel",
+          "author": {
+            "id": 1,
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "bio": "Author of best-selling novels."
+          },
+          "genres": [
+            "Fiction",
+            "Drama"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 19.99,
+          "stock": 50
+        },
+        "quantity_sold": 7
+      },
+      {
+        "book": {
+          "id": 6,
+          "title": "Book E",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 50,
+          "stock": 100
+        },
+        "quantity_sold": 2
+      },
+      {
+        "book": {
+          "id": 3,
+          "title": "Book B",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 20,
+          "stock": 100
+        },
+        "quantity_sold": 3
+      },
+      {
+        "book": {
+          "id": 4,
+          "title": "Book C",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 30,
+          "stock": 100
+        },
+        "quantity_sold": 2
+      },
+      {
+        "book": {
+          "id": 2,
+          "title": "Book A",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 10,
+          "stock": 100
+        },
+        "quantity_sold": 4
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-01-12T14:20:57.6407955+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:21:57.6404888+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:22:57.6406262+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:23:57.6406147+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:24:57.6406764+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:27:02.4661733+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:28:02.4660884+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:29:02.4662281+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:30:02.4658591+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:31:25.8891561+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:32:25.889931+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:33:25.8890771+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:34:25.8887741+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:35:25.8891498+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:36:32.0295995+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:37:32.0299376+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:38:32.030635+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:39:32.0300968+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:40:58.7281595+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:41:58.7276722+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:42:58.7280077+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:43:58.7279115+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:44:58.727995+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:45:58.7274482+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:46:58.7277422+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:47:58.7278326+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:48:58.7306733+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-12T14:49:58.7278818+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  },
+  {
+    "timestamp": "2025-01-13T14:50:58.7274627+01:00",
+    "total_revenue": 79.98,
+    "total_orders": 1,
+    "top_selling_books": [
+      {
+        "book": {
+          "id": 2,
+          "title": "Book E",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 50,
+          "stock": 100
+        },
+        "quantity_sold": 1
+      },
+      {
+        "book": {
+          "id": 9,
+          "title": "1984",
+          "author": {
+            "id": 4,
+            "first_name": "",
+            "last_name": "",
+            "bio": "English novelist and essayist, known for 1984 and Animal Farm."
+          },
+          "genres": [
+            "Dystopian",
+            "Science Fiction"
+          ],
+          "published_at": "0001-01-01T00:00:00Z",
+          "price": 14.99,
+          "stock": 0
+        },
+        "quantity_sold": 2
+      }
+    ]
+  },
+  {
+    "timestamp": "2025-01-13T14:51:58.7278415+01:00",
+    "total_revenue": 0,
+    "total_orders": 0,
+    "top_selling_books": []
+  }
+]

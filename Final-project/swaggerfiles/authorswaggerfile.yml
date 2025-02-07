@@ -1,0 +1,201 @@
+openapi: 3.0.0
+info:
+  title: Author API
+  description: API for managing authors, including creation, retrieval, updating, and searching.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /authors:
+    get:
+      summary: Get All Authors
+      description: Retrieve a list of all authors in the system.
+      responses:
+        '200':
+          description: A list of authors.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Author'
+              example:
+                - id: 1
+                  first_name: John
+                  last_name: Doe
+                  bio: "Author of numerous books on programming."
+                - id: 2
+                  first_name: Jane
+                  last_name: Smith
+                  bio: "Expert in software engineering."
+    post:
+      summary: Create a New Author
+      description: Add a new author to the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorInput'
+            example:
+              first_name: Alice
+              last_name: Wonderland
+              bio: "Specializes in adventure novels."
+      responses:
+        '201':
+          description: Author created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          description: Invalid input data.
+  /authors/{id}:
+    get:
+      summary: Get Author by ID
+      description: Retrieve details of a specific author by their ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the author to retrieve.
+      responses:
+        '200':
+          description: Author details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '404':
+          description: Author not found.
+    put:
+      summary: Update Author
+      description: Update details of an existing author.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the author to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorInput'
+            example:
+              first_name: Alice
+              last_name: Updated
+              bio: "Specializes in updated adventure novels."
+      responses:
+        '200':
+          description: Author updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '404':
+          description: Author not found.
+    delete:
+      summary: Delete Author
+      description: Delete an existing author by their ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the author to delete.
+      responses:
+        '204':
+          description: Author deleted successfully.
+        '404':
+          description: Author not found.
+  /authors/search:
+    post:
+      summary: Search Authors
+      description: Search for authors based on criteria.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorSearchCriteria'
+            example:
+              ids: [1, 2]
+              first_names: ["John", "Jane"]
+              last_names: ["Doe"]
+              keywords: ["software", "programming"]
+      responses:
+        '200':
+          description: Search results for authors.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Author'
+              example:
+                - id: 1
+                  first_name: John
+                  last_name: Doe
+                  bio: "Author of numerous books on programming."
+                - id: 2
+                  first_name: Jane
+                  last_name: Smith
+                  bio: "Expert in software engineering."
+components:
+  schemas:
+    Author:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique ID of the author.
+        first_name:
+          type: string
+          description: First name of the author.
+        last_name:
+          type: string
+          description: Last name of the author.
+        bio:
+          type: string
+          description: Short biography of the author.
+    AuthorInput:
+      type: object
+      properties:
+        first_name:
+          type: string
+          description: First name of the author.
+        last_name:
+          type: string
+          description: Last name of the author.
+        bio:
+          type: string
+          description: Short biography of the author.
+    AuthorSearchCriteria:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          description: List of author IDs to filter.
+        first_names:
+          type: array
+          items:
+            type: string
+          description: List of first names to filter.
+        last_names:
+          type: array
+          items:
+            type: string
+          description: List of last names to filter.
+        keywords:
+          type: array
+          items:
+            type: string
+          description: Keywords to search in the bio or names.

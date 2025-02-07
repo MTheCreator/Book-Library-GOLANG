@@ -1,0 +1,247 @@
+openapi: 3.0.3
+info:
+  title: Customer Management API
+  description: API for managing customers in the system.
+  version: "1.0.0"
+
+paths:
+  /customers:
+    get:
+      summary: Get All Customers
+      description: Retrieve a list of all customers in the system.
+      responses:
+        '200':
+          description: A list of customers.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+              example:
+                - id: 1
+                  name: John Doe
+                  email: john.doe@example.com
+                  address:
+                    street: "123 Elm St"
+                    city: "Springfield"
+                    state: "IL"
+                    postal_code: "62701"
+                    country: "USA"
+                  created_at: "2025-01-12T14:00:00Z"
+                - id: 2
+                  name: Jane Smith
+                  email: jane.smith@example.com
+                  address:
+                    street: "456 Oak Ave"
+                    city: "Shelbyville"
+                    state: "IL"
+                    postal_code: "62565"
+                    country: "USA"
+                  created_at: "2025-01-10T10:30:00Z"
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      summary: Create a New Customer
+      description: Add a new customer to the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+            example:
+              name: Alice Wonderland
+              email: alice.wonderland@example.com
+              address:
+                street: "789 Pine Rd"
+                city: "Metropolis"
+                state: "NY"
+                postal_code: "10001"
+                country: "USA"
+      responses:
+        '201':
+          description: Customer created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: Invalid input data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /customers/{id}:
+    get:
+      summary: Get Customer by ID
+      description: Retrieve details of a specific customer by their ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the customer to retrieve.
+      responses:
+        '200':
+          description: Customer details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          description: Customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update Customer
+      description: Update details of an existing customer.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the customer to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+            example:
+              name: Alice Updated
+              email: alice.updated@example.com
+              address:
+                street: "1010 New Lane"
+                city: "Gotham"
+                state: "NJ"
+                postal_code: "07001"
+                country: "USA"
+      responses:
+        '200':
+          description: Customer updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          description: Customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete Customer
+      description: Delete an existing customer by their ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the customer to delete.
+      responses:
+        '204':
+          description: Customer deleted successfully.
+        '404':
+          description: Customer not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique ID of the customer.
+        name:
+          type: string
+          description: Full name of the customer.
+        email:
+          type: string
+          description: Email address of the customer.
+        address:
+          $ref: '#/components/schemas/Address'
+        created_at:
+          type: string
+          format: date-time
+          description: When the customer was created.
+      example:
+        id: 1
+        name: John Doe
+        email: john.doe@example.com
+        address:
+          street: "123 Elm St"
+          city: "Springfield"
+          state: "IL"
+          postal_code: "62701"
+          country: "USA"
+        created_at: "2025-01-12T14:00:00Z"
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          description: Street address.
+        city:
+          type: string
+          description: City.
+        state:
+          type: string
+          description: State.
+        postal_code:
+          type: string
+          description: Postal code.
+        country:
+          type: string
+          description: Country.
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message.
+      example:
+        error: "Invalid input data"

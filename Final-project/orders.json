@@ -1,0 +1,276 @@
+[
+  {
+    "id": 6,
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "USA"
+      },
+      "created_at": "2025-01-12T16:28:13.1806378+01:00"
+    },
+    "items": [
+      {
+        "book": {
+          "id": 2,
+          "title": "The Great Novel",
+          "author": {
+            "id": 1,
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "bio": "Author of best-selling novels."
+          },
+          "genres": [
+            "Fiction",
+            "Drama"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 19.99,
+          "stock": 50
+        },
+        "quantity": 4
+      }
+    ],
+    "total_price": 79.96,
+    "created_at": "2025-01-12T16:28:13.1821606+01:00"
+  },
+  {
+    "id": 8,
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "USA"
+      },
+      "created_at": "2025-01-12T16:28:13.1806378+01:00"
+    },
+    "items": [
+      {
+        "book": {
+          "id": 5,
+          "title": "Book D",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 40,
+          "stock": 99
+        },
+        "quantity": 1
+      }
+    ],
+    "total_price": 40,
+    "created_at": "2025-01-12T16:37:40.7968267+01:00"
+  },
+  {
+    "id": 1,
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "USA"
+      },
+      "created_at": "2025-01-12T16:28:13.1806378+01:00"
+    },
+    "items": [
+      {
+        "book": {
+          "id": 3,
+          "title": "Book B",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 20,
+          "stock": 100
+        },
+        "quantity": 3
+      }
+    ],
+    "total_price": 60,
+    "created_at": "2025-01-12T16:28:13.1821606+01:00"
+  },
+  {
+    "id": 2,
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "USA"
+      },
+      "created_at": "2025-01-12T16:28:13.1806378+01:00"
+    },
+    "items": [
+      {
+        "book": {
+          "id": 4,
+          "title": "Book C",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 30,
+          "stock": 100
+        },
+        "quantity": 2
+      }
+    ],
+    "total_price": 60,
+    "created_at": "2025-01-12T16:28:13.1821606+01:00"
+  },
+  {
+    "id": 3,
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "USA"
+      },
+      "created_at": "2025-01-12T16:28:13.1806378+01:00"
+    },
+    "items": [
+      {
+        "book": {
+          "id": 5,
+          "title": "Book D",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 40,
+          "stock": 100
+        },
+        "quantity": 1
+      }
+    ],
+    "total_price": 40,
+    "created_at": "2025-01-12T16:28:13.1821606+01:00"
+  },
+  {
+    "id": 4,
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "USA"
+      },
+      "created_at": "2025-01-12T16:28:13.1806378+01:00"
+    },
+    "items": [
+      {
+        "book": {
+          "id": 1,
+          "title": "Book E",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 50,
+          "stock": 100
+        },
+        "quantity": 2
+      }
+    ],
+    "total_price": 100,
+    "created_at": "2025-01-12T16:28:13.1821606+01:00"
+  },
+  {
+    "id": 5,
+    "customer": {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john.doe@example.com",
+      "address": {
+        "street": "123 Main St",
+        "city": "New York",
+        "state": "NY",
+        "postal_code": "10001",
+        "country": "USA"
+      },
+      "created_at": "2025-01-12T16:28:13.1806378+01:00"
+    },
+    "items": [
+      {
+        "book": {
+          "id": 1,
+          "title": "Book E",
+          "author": {
+            "id": 2,
+            "first_name": "Robert",
+            "last_name": "Brown",
+            "bio": "Renowned author of various genres."
+          },
+          "genres": [
+            "Fiction"
+          ],
+          "published_at": "2025-01-01T00:00:00Z",
+          "price": 50,
+          "stock": 100
+        },
+        "quantity": 5
+      }
+    ],
+    "total_price": 250,
+    "created_at": "2025-01-12T16:28:13.1821606+01:00"
+  }
+]

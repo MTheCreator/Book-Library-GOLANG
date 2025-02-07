@@ -1,0 +1,54 @@
+[
+  {
+    "id": 1,
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "address": {
+      "street": "123 Main St",
+      "city": "New York",
+      "state": "NY",
+      "postal_code": "10001",
+      "country": "USA"
+    },
+    "created_at": "2025-01-12T14:39:58.723713+01:00"
+  },
+  {
+    "id": 2,
+    "name": "Alice Johnson",
+    "email": "alice.johnson@example.com",
+    "address": {
+      "street": "456 Elm St",
+      "city": "Los Angeles",
+      "state": "CA",
+      "postal_code": "90001",
+      "country": "USA"
+    },
+    "created_at": "2025-01-12T14:39:58.723713+01:00"
+  },
+  {
+    "id": 3,
+    "name": "",
+    "email": "alice.smith@example.com",
+    "address": {
+      "street": "",
+      "city": "",
+      "state": "",
+      "postal_code": "",
+      "country": ""
+    },
+    "created_at": "2025-01-12T14:48:45.9252237+01:00"
+  },
+  {
+    "id": 4,
+    "name": "",
+    "email": "bob.johnson@example.com",
+    "address": {
+      "street": "",
+      "city": "",
+      "state": "",
+      "postal_code": "",
+      "country": ""
+    },
+    "created_at": "2025-01-12T14:48:58.3823277+01:00"
+  }
+]

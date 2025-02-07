@@ -1,0 +1,246 @@
+openapi: 3.0.0
+info:
+  title: Books API
+  description: API for managing books in the system.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local server
+
+paths:
+  /books:
+    get:
+      summary: Get All Books
+      description: Retrieve a list of all books in the system.
+      responses:
+        '200':
+          description: A list of books.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+              example:
+                - id: 1
+                  title: "Book Title 1"
+                  description: "This is the first book."
+                  price: 19.99
+                  stock: 10
+                  author:
+                    id: 1
+                    first_name: "John"
+                    last_name: "Doe"
+                    bio: "Author biography."
+                - id: 2
+                  title: "Book Title 2"
+                  description: "This is the second book."
+                  price: 25.00
+                  stock: 0
+                  author:
+                    id: 2
+                    first_name: "Jane"
+                    last_name: "Smith"
+                    bio: "Another author biography."
+
+    post:
+      summary: Create a New Book
+      description: Add a new book to the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+            example:
+              title: "New Book"
+              description: "A description of the new book."
+              price: 15.99
+              stock: 5
+              author:
+                id: 1
+      responses:
+        '201':
+          description: Book created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          description: Invalid input data.
+
+  /books/{id}:
+    get:
+      summary: Get Book by ID
+      description: Retrieve details of a specific book by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the book to retrieve.
+      responses:
+        '200':
+          description: Book details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Book not found.
+
+    put:
+      summary: Update Book
+      description: Update details of an existing book.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the book to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+            example:
+              title: "Updated Book Title"
+              description: "Updated description."
+              price: 18.99
+              stock: 12
+              author:
+                id: 1
+      responses:
+        '200':
+          description: Book updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Book not found.
+
+    delete:
+      summary: Delete Book
+      description: Delete an existing book by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the book to delete.
+      responses:
+        '204':
+          description: Book deleted successfully.
+        '404':
+          description: Book not found.
+
+  /books/search:
+    post:
+      summary: Search Books
+      description: Search for books based on criteria.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookSearchCriteria'
+            example:
+              ids: [1, 2]
+              titles: ["Book Title 1", "Book Title 2"]
+              authors: [1]
+              min_price: 10.00
+              max_price: 30.00
+              in_stock: true
+      responses:
+        '200':
+          description: Search results for books.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+              example:
+                - id: 1
+                  title: "Book Title 1"
+                  description: "This is the first book."
+                  price: 19.99
+                  stock: 10
+                  author:
+                    id: 1
+                    first_name: "John"
+                    last_name: "Doe"
+                    bio: "Author biography."
+
+components:
+  schemas:
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique ID of the book.
+        title:
+          type: string
+          description: Title of the book.
+        description:
+          type: string
+          description: A brief description of the book.
+        price:
+          type: number
+          format: float
+          description: Price of the book.
+        stock:
+          type: integer
+          description: Number of items in stock.
+        author:
+          $ref: '#/components/schemas/Author'
+    Author:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique ID of the author.
+        first_name:
+          type: string
+          description: First name of the author.
+        last_name:
+          type: string
+          description: Last name of the author.
+        bio:
+          type: string
+          description: Biography of the author.
+    BookSearchCriteria:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+          description: List of book IDs to filter.
+        titles:
+          type: array
+          items:
+            type: string
+          description: List of book titles to filter.
+        authors:
+          type: array
+          items:
+            type: integer
+          description: List of author IDs to filter.
+        min_price:
+          type: number
+          format: float
+          description: Minimum price for filtering.
+        max_price:
+          type: number
+          format: float
+          description: Maximum price for filtering.
+        in_stock:
+          type: boolean
+          description: Filter by availability in stock.

@@ -1,0 +1,311 @@
+openapi: 3.0.0
+info:
+  title: Orders API
+  description: API for managing orders, customers, books, and related entities in a bookstore application.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /orders:
+    get:
+      summary: Get All Orders
+      description: Retrieve a list of all orders in the system.
+      responses:
+        '200':
+          description: A list of orders.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+              example:
+                - id: 1
+                  customer:
+                    id: 1
+                    name: John Doe
+                    email: john.doe@example.com
+                    address:
+                      street: "123 Elm St"
+                      city: "Springfield"
+                      state: "IL"
+                      zip_code: "62701"
+                  items:
+                    - book:
+                        id: 1
+                        title: "Book One"
+                        price: 19.99
+                        stock: 10
+                      quantity: 2
+                  total_price: 39.98
+                  created_at: "2025-01-12T14:00:00Z"
+                - id: 2
+                  customer:
+                    id: 2
+                    name: Jane Smith
+                    email: jane.smith@example.com
+                    address:
+                      street: "456 Oak Ave"
+                      city: "Shelbyville"
+                      state: "IL"
+                      zip_code: "62565"
+                  items:
+                    - book:
+                        id: 2
+                        title: "Book Two"
+                        price: 9.99
+                        stock: 5
+                      quantity: 1
+                  total_price: 9.99
+                  created_at: "2025-01-12T15:30:00Z"
+
+    post:
+      summary: Create a New Order
+      description: Add a new order to the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+            example:
+              customer:
+                id: 1
+              items:
+                - book:
+                    id: 1
+                  quantity: 2
+      responses:
+        '201':
+          description: Order created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Invalid input data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{id}:
+    get:
+      summary: Get Order by ID
+      description: Retrieve details of a specific order by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the order to retrieve.
+      responses:
+        '200':
+          description: Order details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update Order
+      description: Update details of an existing order.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the order to update.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+            example:
+              customer:
+                id: 1
+              items:
+                - book:
+                    id: 2
+                  quantity: 1
+      responses:
+        '200':
+          description: Order updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: Order not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: Delete Order
+      description: Delete an existing order by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID of the order to delete.
+      responses:
+        '204':
+          description: Order deleted successfully.
+        '404':
+          description: Order not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/search:
+    post:
+      summary: Search Orders
+      description: Search for orders based on criteria.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderSearchCriteria'
+            example:
+              customer_ids: [1, 2]
+              min_total_price: 10.00
+              max_total_price: 50.00
+              min_created_at: "2025-01-01T00:00:00Z"
+              max_created_at: "2025-01-12T23:59:59Z"
+      responses:
+        '200':
+          description: Search results for orders.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+components:
+  schemas:
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique ID of the order.
+        customer:
+          $ref: '#/components/schemas/Customer'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        total_price:
+          type: number
+          format: float
+          description: Total price of the order.
+        created_at:
+          type: string
+          format: date-time
+          description: When the order was created.
+
+    OrderItem:
+      type: object
+      properties:
+        book:
+          $ref: '#/components/schemas/Book'
+        quantity:
+          type: integer
+          description: Quantity of the book in the order.
+
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique ID of the book.
+        title:
+          type: string
+          description: Title of the book.
+        price:
+          type: number
+          format: float
+          description: Price of the book.
+        stock:
+          type: integer
+          description: Number of copies in stock.
+
+    Customer:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Unique ID of the customer.
+        name:
+          type: string
+          description: Name of the customer.
+        email:
+          type: string
+          description: Email address of the customer.
+        address:
+          $ref: '#/components/schemas/Address'
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          description: Street address.
+        city:
+          type: string
+          description: City of the address.
+        state:
+          type: string
+          description: State of the address.
+        zip_code:
+          type: string
+          description: ZIP code of the address.
+
+    OrderSearchCriteria:
+      type: object
+      properties:
+        customer_ids:
+          type: array
+          items:
+            type: integer
+          description: List of customer IDs to filter orders.
+        min_total_price:
+          type: number
+          format: float
+          description: Minimum total price for filtering orders.
+        max_total_price:
+          type: number
+          format: float
+          description: Maximum total price for filtering orders.
+        min_created_at:
+          type: string
+          format: date-time
+          description: Start date-time for filtering orders.
+        max_created_at:
+          type: string
+          format: date-time
+          description: End date-time for filtering orders.
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message describing the issue.

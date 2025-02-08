@@ -9,7 +9,7 @@ This project is a **Bookstore Management System** built using **Go**. It provide
   email: Mounia.Baddou@um6p.ma,
   github: MTheCreator   
 - **Kawtar Labzae**
-  email: Kawtar.Labzae@um6p.ma
+  email: Kawtar.Labzae@um6p.ma,
   github: kawtarlabzae  
 
 ---
@@ -48,6 +48,7 @@ This project is a **Bookstore Management System** built using **Go**. It provide
 ---
 
 ## Folder Structure (For Now)
+```
 Final-project/
 ├── Controllers/         # Logic for handling requests and routing
 ├── Documentation/       # Project documentation files
@@ -64,14 +65,14 @@ Final-project/
 ├── main.go              # Main entry point for the application
 ├── orders.json          # Sample data for orders
 └── sales_reports.json   # Sample sales report data
-
+```
 
 
 ## Steps to Run the Project  
 
 1. **Clone the Repository**  
    ```bash
-   git clone https://github.com/kawtarlabzae/Introduction-to-Go.git
+   git clone https://github.com/MTheCreator/Book-Library-GOLANG
    ```
 
 2. **Navigate to the Project Folder**  
@@ -179,4 +180,4 @@ We welcome contributions! Please follow these steps:
 ## License  
 
 This project is licensed under the **MIT License**.
-```
+

@@ -1,27 +1,35 @@
+// File: Controllers/author.go
 package Controllers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
 
 	inmemoryStores "finalProject/InmemoryStores"
+	postgresStores "finalProject/postgresStores"
 	interfaces "finalProject/Interfaces"
 	"finalProject/StructureData"
 )
 
-// JSON file path for author persistence
+// JSON file path for author persistence.
 var authorFile = "authors.json"
 
-// InitializeAuthorFile ensures the JSON file for authors exists
+// InitializeAuthorFile ensures the JSON file for authors exists and loads data into both the in-memory and PostgreSQL stores.
 func InitializeAuthorFile() {
+	pgStore := postgresStores.GetPostgresAuthorStoreInstance()
+    existingAuthors := pgStore.GetAllAuthors()
+    if len(existingAuthors) > 0 {
+        log.Println("Authors already exist in PostgreSQL; skipping JSON initialization for authors.")
+        return
+    }
 	if _, err := os.Stat(authorFile); os.IsNotExist(err) {
 		file, _ := os.Create(authorFile)
 		file.Write([]byte("[]"))
 		file.Close()
 	} else {
-		// Load authors from the JSON file into the in-memory store
 		file, err := os.Open(authorFile)
 		if err != nil {
 			panic("Failed to open author file")
@@ -33,31 +41,31 @@ func InitializeAuthorFile() {
 			panic("Failed to decode author file")
 		}
 
-		// Populate the in-memory store
 		store := inmemoryStores.GetAuthorStoreInstance()
+		pgStore := postgresStores.GetPostgresAuthorStoreInstance()
 		for _, author := range authors {
-			store.CreateAuthor(author)
+			// Create in PostgreSQL first.
+			createdPgAuthor, errResp := pgStore.CreateAuthor(author)
+			if errResp != nil {
+				log.Printf("Error creating author in PostgreSQL for ID %d: %v", author.ID, errResp.Message)
+				continue
+			}
+			_, _ = store.CreateAuthor(createdPgAuthor)
 		}
 	}
 }
 
-// GetAllAuthors handles the GET /authors request
+// GetAllAuthors handles the GET /authors request.
 func GetAllAuthors(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetAuthorStoreInstance()
-
-	// Retrieve all authors
-	authors, _ := store.SearchAuthors(StructureData.AuthorSearchCriteria{}) // Empty criteria for all authors
-
-	// Return JSON response
+	authors, _ := store.SearchAuthors(StructureData.AuthorSearchCriteria{})
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(authors)
 }
 
-// GetAuthorByID handles the GET /authors/{id} request
+// GetAuthorByID handles the GET /authors/{id} request.
 func GetAuthorByID(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetAuthorStoreInstance()
-
-	// Extract ID from the URL
 	idStr := r.URL.Path[len("/authors/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -65,25 +73,21 @@ func GetAuthorByID(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid author ID"})
 		return
 	}
-
-	// Retrieve the author by ID
-	author, errResponse := store.GetAuthor(id)
-	if errResponse != nil {
+	author, errResp := store.GetAuthor(id)
+	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(errResponse)
+		json.NewEncoder(w).Encode(errResp)
 		return
 	}
-
-	// Return JSON response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(author)
 }
 
-// CreateAuthor handles the POST /authors request
+// CreateAuthor handles the POST /authors request.
 func CreateAuthor(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetAuthorStoreInstance()
+	pgStore := postgresStores.GetPostgresAuthorStoreInstance()
 
-	// Decode the request body
 	var author StructureData.Author
 	if err := json.NewDecoder(r.Body).Decode(&author); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -91,31 +95,67 @@ func CreateAuthor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create the author in the store
-	createdAuthor, errResponse := store.CreateAuthor(author)
-	if errResponse != nil {
+	// Create in PostgreSQL first.
+	createdPgAuthor, pgErr := pgStore.CreateAuthor(author)
+	if pgErr != nil {
+		log.Printf("Error creating author in PostgreSQL: %v", pgErr.Message)
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errResponse)
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving author"})
 		return
 	}
 
-	// Persist to JSON file
+	// Now create in the in-memory store using the PostgreSQL author.
+	createdAuthor, errResp := store.CreateAuthor(createdPgAuthor)
+	if errResp != nil {
+		pgStore.DeleteAuthor(createdPgAuthor.ID)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(errResp)
+		return
+	}
+
 	if err := persistAuthorsToFile(store); err != nil {
+		store.DeleteAuthor(createdAuthor.ID)
+		pgStore.DeleteAuthor(createdPgAuthor.ID)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving data"})
 		return
 	}
 
-	// Return the created author
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(createdAuthor)
 }
 
-// UpdateAuthor handles the PUT /authors/{id} request
+// (UpdateAuthor, DeleteAuthor, and SearchAuthors remain unchanged.)
+
+// persistAuthorsToFile saves all authors to the JSON file in a pretty JSON format.
+func persistAuthorsToFile(store interfaces.AuthorStore) *StructureData.ErrorResponse {
+	authors, errResp := store.SearchAuthors(StructureData.AuthorSearchCriteria{})
+	if errResp != nil {
+		return &StructureData.ErrorResponse{Message: errResp.Message}
+	}
+
+	file, err := os.Create(authorFile)
+	if err != nil {
+		return &StructureData.ErrorResponse{Message: "Failed to create author file: " + err.Error()}
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(authors); err != nil {
+		return &StructureData.ErrorResponse{Message: "Failed to encode authors to file: " + err.Error()}
+	}
+
+	return nil
+}
+
+
+// UpdateAuthor handles the PUT /authors/{id} request.
 func UpdateAuthor(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetAuthorStoreInstance()
+	pgStore := postgresStores.GetPostgresAuthorStoreInstance()
 
-	// Extract ID from the URL
+	// Extract the author ID from the URL.
 	idStr := r.URL.Path[len("/authors/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -124,7 +164,7 @@ func UpdateAuthor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Decode the request body
+	// Decode the request body.
 	var author StructureData.Author
 	if err := json.NewDecoder(r.Body).Decode(&author); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -132,33 +172,38 @@ func UpdateAuthor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update the author in the store
-	updatedAuthor, errResponse := store.UpdateAuthor(id, author)
-	if errResponse != nil {
+	updatedAuthor, errResp := store.UpdateAuthor(id, author)
+	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(errResponse)
+		json.NewEncoder(w).Encode(errResp)
 		return
 	}
 
-	// Persist to JSON file
+	// Persist the updated authors to JSON.
 	if err := persistAuthorsToFile(store); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving data"})
 		return
 	}
 
-	// Return the updated author
+	// Persist the update to PostgreSQL.
+	_, pgErr := pgStore.UpdateAuthor(id, updatedAuthor)
+	if pgErr != nil {
+		log.Printf("Error updating author in PostgreSQL: %v", pgErr.Message)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedAuthor)
 }
 
-// DeleteAuthor handles the DELETE /authors/{id} request
+// DeleteAuthor handles the DELETE /authors/{id} request.
 func DeleteAuthor(w http.ResponseWriter, r *http.Request) {
 	authorStore := inmemoryStores.GetAuthorStoreInstance()
 	bookStore := inmemoryStores.GetBookStoreInstance()
+	pgStore := postgresStores.GetPostgresAuthorStoreInstance()
 	orderStore := inmemoryStores.GetOrderStoreInstance()
 
-	// Extract ID from the URL
+	// Extract the author ID from the URL.
 	idStr := r.URL.Path[len("/authors/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -167,19 +212,18 @@ func DeleteAuthor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete the author from the store
-	errResponse := authorStore.DeleteAuthor(id)
-	if errResponse != nil {
+	// Delete the author from the in-memory store.
+	errResp := authorStore.DeleteAuthor(id)
+	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(errResponse)
+		json.NewEncoder(w).Encode(errResp)
 		return
 	}
 
-	// Delete all books associated with the author if not in an order
+	// Delete all books associated with the author if they are not linked to any orders.
 	books := bookStore.GetAllBooks()
 	for _, book := range books {
 		if book.Author.ID == id {
-			// Check if the book exists in any order
 			orders := orderStore.GetAllOrders()
 			bookInOrder := false
 			for _, order := range orders {
@@ -193,8 +237,6 @@ func DeleteAuthor(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 			}
-
-			// If the book is not in any order, delete it
 			if !bookInOrder {
 				errResp := bookStore.DeleteBook(book.ID)
 				if errResp != nil {
@@ -206,69 +248,45 @@ func DeleteAuthor(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Persist updated books to file
+	// Persist updated books.
 	if err := persistBooksToFile(bookStore.GetAllBooks()); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving books data"})
 		return
 	}
 
-	// Persist updated authors to file
+	// Persist updated authors.
 	if err := persistAuthorsToFile(authorStore); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(err)
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving authors data"})
 		return
 	}
 
-	// Return success response
+	// Delete the author from PostgreSQL.
+	pgErr := pgStore.DeleteAuthor(id)
+	if pgErr != nil {
+		log.Printf("Error deleting author from PostgreSQL: %v", pgErr.Message)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// SearchAuthors handles the POST /authors/search request
+// SearchAuthors handles the POST /authors/search request.
 func SearchAuthors(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetAuthorStoreInstance()
-
-	// Decode the search criteria
 	var criteria StructureData.AuthorSearchCriteria
 	if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid search criteria"})
 		return
 	}
-
-	// Search authors
-	authors, errResponse := store.SearchAuthors(criteria)
-	if errResponse != nil {
+	authors, errResp := store.SearchAuthors(criteria)
+	if errResp != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errResponse)
+		json.NewEncoder(w).Encode(errResp)
 		return
 	}
-
-	// Return JSON response
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(authors)
 }
 
-// persistAuthorsToFile saves all authors to the JSON file in a pretty JSON format
-func persistAuthorsToFile(store interfaces.AuthorStore) *StructureData.ErrorResponse {
-	authors, errResponse := store.SearchAuthors(StructureData.AuthorSearchCriteria{})
-	if errResponse != nil {
-		return &StructureData.ErrorResponse{Message: errResponse.Error()}
-	}
-
-	file, err := os.Create(authorFile)
-	if err != nil {
-		return &StructureData.ErrorResponse{Message: "Failed to create author file: " + err.Error()}
-	}
-	defer file.Close()
-
-	// Use a pretty JSON encoder
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ") // Add indentation for better readability
-
-	if err := encoder.Encode(authors); err != nil {
-		return &StructureData.ErrorResponse{Message: "Failed to encode authors to file: " + err.Error()}
-	}
-
-	return nil
-}

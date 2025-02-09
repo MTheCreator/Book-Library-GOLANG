@@ -1,3 +1,4 @@
+// File: InmemoryStores/orderStore.go
 package InmemoryStores
 
 import (
@@ -19,7 +20,7 @@ var (
 	orderOnce          sync.Once
 )
 
-// GetOrderStoreInstance returns the singleton instance of InMemoryOrderStore
+// GetOrderStoreInstance returns the singleton instance of InMemoryOrderStore.
 func GetOrderStoreInstance() *InMemoryOrderStore {
 	orderOnce.Do(func() {
 		orderStoreInstance = &InMemoryOrderStore{
@@ -30,35 +31,44 @@ func GetOrderStoreInstance() *InMemoryOrderStore {
 	return orderStoreInstance
 }
 
-// CreateOrder adds a new order to the store
-// CreateOrder adds a new order to the store
+// CreateOrder adds a new order to the store.
 func (store *InMemoryOrderStore) CreateOrder(order data.Order) (data.Order, *data.ErrorResponse) {
-    store.mu.Lock()
-    defer store.mu.Unlock()
+	store.mu.Lock()
+	defer store.mu.Unlock()
 
-    // Calculate the total price of the order
-    totalPrice := 0.0
-    for i, item := range order.Items {
-        // Ensure the book exists and fetch its details
-        bookStore := GetBookStoreInstance()
-        book, err := bookStore.GetBook(item.Book.ID)
-        if err != nil {
-            return data.Order{}, &data.ErrorResponse{Message: "Book not found for item in order"}
-        }
-        // Update the book details in the order
-        order.Items[i].Book = book
+	// Calculate total price.
+	totalPrice := 0.0
+	for i, item := range order.Items {
+		bookStore := GetBookStoreInstance()
+		book, err := bookStore.GetBook(item.Book.ID)
+		if err != nil {
+			return data.Order{}, &data.ErrorResponse{Message: "Book not found for item in order"}
+		}
+		order.Items[i].Book = book
+		totalPrice += book.Price * float64(item.Quantity)
+	}
+	order.TotalPrice = totalPrice
+	order.CreatedAt = time.Now()
 
-        // Calculate price * quantity and add to total
-        totalPrice += book.Price * float64(item.Quantity)
-    }
-
-    order.TotalPrice = totalPrice // Set the calculated total price
-    order.ID = store.nextID
-    order.CreatedAt = time.Now()
-    store.nextID++
-    store.orders[order.ID] = order
-    return order, nil
+	// If order.ID is already set, use it; otherwise assign new ID.
+	if order.ID != 0 {
+		// Check if already exists.
+		if _, exists := store.orders[order.ID]; exists {
+			return data.Order{}, &data.ErrorResponse{Message: "Order ID already exists"}
+		}
+		store.orders[order.ID] = order
+		if order.ID >= store.nextID {
+			store.nextID = order.ID + 1
+		}
+	} else {
+		order.ID = store.nextID
+		store.nextID++
+		store.orders[order.ID] = order
+	}
+	return order, nil
 }
+
+// (The other methods remain unchanged.)
 
 
 // GetOrder retrieves an order by its ID

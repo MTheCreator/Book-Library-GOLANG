@@ -36,10 +36,24 @@ func (store *InMemoryCustomerStore) CreateCustomer(customer data.Customer) (data
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
+	// Set the creation time.
 	customer.CreatedAt = time.Now()
-	customer.ID = store.nextID
-	store.nextID++
-	store.customers[customer.ID] = customer
+
+	if customer.ID != 0 {
+		// Use the provided ID (for example, when coming from PostgreSQL)
+		if _, exists := store.customers[customer.ID]; exists {
+			return data.Customer{}, &data.ErrorResponse{Message: "Customer ID already exists"}
+		}
+		store.customers[customer.ID] = customer
+		if customer.ID >= store.nextID {
+			store.nextID = customer.ID + 1
+		}
+	} else {
+		// Otherwise assign a new ID.
+		customer.ID = store.nextID
+		store.nextID++
+		store.customers[customer.ID] = customer
+	}
 	return customer, nil
 }
 

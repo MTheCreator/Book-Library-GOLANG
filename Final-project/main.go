@@ -10,19 +10,53 @@ import (
 	"time"
 
 	controllers "finalProject/Controllers"
+	"finalProject/postgresStores" // Ensure this import path matches your project structure
 
 	"github.com/julienschmidt/httprouter"
 )
 
+func initConfig() {
+	// In production, load your credentials from environment variables.
+	if os.Getenv("DB_USER") == "" || os.Getenv("DB_PASSWORD") == "" || os.Getenv("DB_NAME") == "" || os.Getenv("DB_SSLMODE") == "" {
+		log.Println("WARNING: DB configuration not set via environment variables. Falling back to hardcoded connection string.")
+	}
+}
+
+func closePostgresConnections() {
+	// Use the public Close() method from each store.
+	if store := postgresStores.GetPostgresCustomerStoreInstance(); store != nil {
+		if err := store.Close(); err != nil {
+			log.Printf("Error closing customer Postgres connection: %v", err)
+		}
+	}
+	if store := postgresStores.GetPostgresAuthorStoreInstance(); store != nil {
+		if err := store.Close(); err != nil {
+			log.Printf("Error closing author Postgres connection: %v", err)
+		}
+	}
+	if store := postgresStores.GetPostgresBookStoreInstance(); store != nil {
+		if err := store.Close(); err != nil {
+			log.Printf("Error closing book Postgres connection: %v", err)
+		}
+	}
+	if store := postgresStores.GetPostgresOrderStoreInstance(); store != nil {
+		if err := store.Close(); err != nil {
+			log.Printf("Error closing order Postgres connection: %v", err)
+		}
+	}
+}
+
 func main() {
-	// Initialize JSON files for persistence
+	// Load configuration.
+	initConfig()
+
+	// Initialize JSON files and load data into in-memory and PostgreSQL stores.
 	controllers.InitializeCustomerFile()
 	controllers.InitializeAuthorFile()
 	controllers.InitializeBookFile()
 	controllers.InitializeOrderFile()
-	
 
-	// Start periodic sales report generation
+	// Start periodic sales report generation.
 	go func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -42,7 +76,7 @@ func main() {
 		}
 	}()
 
-	// Create a new router
+	// Create a new router.
 	router := httprouter.New()
 
 	// Customer Routes
@@ -142,8 +176,14 @@ func main() {
 		ctx := r.Context()
 		controllers.GetSalesReport(ctx, w, r)
 	})
+	router.POST("/reports/sales/generate", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		ctx := r.Context()
+		controllers.GenerateSalesReport(ctx)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Sales report generated successfully"))
+	})
 
-	// Gracefully handle server shutdown
+	// Create and start the HTTP server.
 	server := &http.Server{Addr: ":8080", Handler: router}
 	go func() {
 		log.Println("Starting server on :8080...")
@@ -151,14 +191,8 @@ func main() {
 			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
-	router.POST("/reports/sales/generate", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		ctx := r.Context()
-		controllers.GenerateSalesReport(ctx)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Sales report generated successfully"))
-	})
-	
-	// Wait for termination signal to gracefully shut down
+
+	// Wait for termination signal to gracefully shut down.
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
@@ -169,5 +203,9 @@ func main() {
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("Server shutdown failed: %v", err)
 	}
+
+	// Close PostgreSQL connections gracefully.
+	closePostgresConnections()
+
 	log.Println("Server exited gracefully.")
 }

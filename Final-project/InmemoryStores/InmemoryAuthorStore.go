@@ -1,3 +1,4 @@
+// File: InmemoryStores/authorStore.go
 package InmemoryStores
 
 import (
@@ -19,7 +20,7 @@ var (
 	authorOnce          sync.Once
 )
 
-// GetAuthorStoreInstance returns the singleton instance of InMemoryAuthorStore
+// GetAuthorStoreInstance returns the singleton instance of InMemoryAuthorStore.
 func GetAuthorStoreInstance() interfaces.AuthorStore {
 	authorOnce.Do(func() {
 		authorStoreInstance = &InMemoryAuthorStore{
@@ -30,18 +31,28 @@ func GetAuthorStoreInstance() interfaces.AuthorStore {
 	return authorStoreInstance
 }
 
-// CreateAuthor adds a new author to the store
+// CreateAuthor adds a new author to the store.
 func (store *InMemoryAuthorStore) CreateAuthor(author data.Author) (data.Author, *data.ErrorResponse) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	author.ID = store.nextID
-	store.nextID++
-	store.authors[author.ID] = author
+	if author.ID != 0 {
+		if _, exists := store.authors[author.ID]; exists {
+			return data.Author{}, &data.ErrorResponse{Message: "Author ID already exists"}
+		}
+		store.authors[author.ID] = author
+		if author.ID >= store.nextID {
+			store.nextID = author.ID + 1
+		}
+	} else {
+		author.ID = store.nextID
+		store.nextID++
+		store.authors[author.ID] = author
+	}
 	return author, nil
 }
 
-// GetAuthor retrieves an author by ID
+// GetAuthor retrieves an author by ID.
 func (store *InMemoryAuthorStore) GetAuthor(id int) (data.Author, *data.ErrorResponse) {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
@@ -53,7 +64,7 @@ func (store *InMemoryAuthorStore) GetAuthor(id int) (data.Author, *data.ErrorRes
 	return author, nil
 }
 
-// GetAllAuthors retrieves all authors from the store
+// GetAllAuthors retrieves all authors.
 func (store *InMemoryAuthorStore) GetAllAuthors() []data.Author {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
@@ -65,7 +76,7 @@ func (store *InMemoryAuthorStore) GetAllAuthors() []data.Author {
 	return authors
 }
 
-// UpdateAuthor updates an author's details
+// UpdateAuthor updates an author's details.
 func (store *InMemoryAuthorStore) UpdateAuthor(id int, author data.Author) (data.Author, *data.ErrorResponse) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -79,7 +90,7 @@ func (store *InMemoryAuthorStore) UpdateAuthor(id int, author data.Author) (data
 	return author, nil
 }
 
-// DeleteAuthor removes an author by ID
+// DeleteAuthor removes an author by ID.
 func (store *InMemoryAuthorStore) DeleteAuthor(id int) *data.ErrorResponse {
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -92,7 +103,7 @@ func (store *InMemoryAuthorStore) DeleteAuthor(id int) *data.ErrorResponse {
 	return nil
 }
 
-// SearchAuthors filters authors based on the search criteria
+// SearchAuthors filters authors based on the search criteria.
 func (store *InMemoryAuthorStore) SearchAuthors(criteria data.AuthorSearchCriteria) ([]data.Author, *data.ErrorResponse) {
 	store.mu.RLock()
 	defer store.mu.RUnlock()

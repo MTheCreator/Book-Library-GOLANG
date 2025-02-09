@@ -1,3 +1,4 @@
+// File: InmemoryStores/bookStore.go
 package InmemoryStores
 
 import (
@@ -19,7 +20,7 @@ var (
 	bookOnce          sync.Once
 )
 
-// GetBookStoreInstance returns the singleton instance of InMemoryBookStore
+// GetBookStoreInstance returns the singleton instance of InMemoryBookStore.
 func GetBookStoreInstance() interfaces.BookStore {
 	bookOnce.Do(func() {
 		bookStoreInstance = &InMemoryBookStore{
@@ -30,22 +31,33 @@ func GetBookStoreInstance() interfaces.BookStore {
 	return bookStoreInstance
 }
 
-// CreateBook adds a new book to the store
-
+// CreateBook adds a new book to the store.
 func (store *InMemoryBookStore) CreateBook(book data.Book) (data.Book, *data.ErrorResponse) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 
-	// Validate that the stock is at least 1
 	if book.Stock < 1 {
 		return data.Book{}, &data.ErrorResponse{Message: "Book stock must be at least 1"}
 	}
 
-	book.ID = store.nextID
-	store.nextID++
-	store.books[book.ID] = book
+	if book.ID != 0 {
+		if _, exists := store.books[book.ID]; exists {
+			return data.Book{}, &data.ErrorResponse{Message: "Book ID already exists"}
+		}
+		store.books[book.ID] = book
+		if book.ID >= store.nextID {
+			store.nextID = book.ID + 1
+		}
+	} else {
+		book.ID = store.nextID
+		store.nextID++
+		store.books[book.ID] = book
+	}
 	return book, nil
 }
+
+// (Other methods remain unchanged.)
+
 
 // GetBook retrieves a book by its ID
 func (store *InMemoryBookStore) GetBook(id int) (data.Book, *data.ErrorResponse) {

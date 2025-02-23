@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"finalProject/StructureData"
 	"fmt"
-	_ "log"
+	"log"
+	
 
 	"github.com/lib/pq"
 )
@@ -76,14 +77,13 @@ func (store *PostgresBookStore) CreateBook(book StructureData.Book) (StructureDa
 // (Other methods remain unchanged.)
 
 
-// GetBook retrieves a book by its ID.
 func (store *PostgresBookStore) GetBook(id int) (StructureData.Book, *StructureData.ErrorResponse) {
 	var book StructureData.Book
 	var genres []string
-	// For simplicity, we assume the book table has an "author_id" column.
+	var authorID int
+
 	query := `SELECT id, title, author_id, genres, published_at, price, stock FROM books WHERE id=$1`
 	row := store.db.QueryRow(query, id)
-	var authorID int
 	err := row.Scan(&book.ID, &book.Title, &authorID, pq.Array(&genres), &book.PublishedAt, &book.Price, &book.Stock)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -92,10 +92,30 @@ func (store *PostgresBookStore) GetBook(id int) (StructureData.Book, *StructureD
 		return StructureData.Book{}, &StructureData.ErrorResponse{Message: fmt.Sprintf("Error fetching book: %v", err)}
 	}
 	book.Genres = genres
-	// Here we only set the author ID. Full author details can be obtained from the Author store.
-	book.Author = StructureData.Author{ID: authorID}
+
+	// Now fetch the author from PostgresAuthorStore to get full details.
+	authorStore := GetPostgresAuthorStoreInstance()
+	author, authErr := authorStore.GetAuthor(authorID)
+	if authErr != nil {
+		// If the author isn't found, you might decide to return an error
+		// or keep a partial author. Let's just keep a partial author for now.
+		// Or you can do:
+		// return StructureData.Book{}, authErr
+		log.Printf("Warning: Author ID %d not found for book %d: %v", authorID, book.ID, authErr)
+	} else {
+		book.Author = author
+	}
+
+	// Retrieve and set review stats, if available.
+	reviewStore := GetPostgresReviewStoreInstance()
+	stats, err := reviewStore.GetBookReviewStats(id)
+	if err == nil {
+		book.ReviewStats = &stats
+	}
+
 	return book, nil
 }
+
 
 // UpdateBook updates an existing book in the database.
 func (store *PostgresBookStore) UpdateBook(id int, book StructureData.Book) (StructureData.Book, *StructureData.ErrorResponse) {
@@ -134,7 +154,6 @@ func (store *PostgresBookStore) DeleteBook(id int) *StructureData.ErrorResponse 
 	return nil
 }
 
-// GetAllBooks retrieves all books from the database.
 func (store *PostgresBookStore) GetAllBooks() []StructureData.Book {
 	books := []StructureData.Book{}
 	query := `SELECT id, title, author_id, genres, published_at, price, stock FROM books`
@@ -143,6 +162,9 @@ func (store *PostgresBookStore) GetAllBooks() []StructureData.Book {
 		return books
 	}
 	defer rows.Close()
+
+	authorStore := GetPostgresAuthorStoreInstance()
+
 	for rows.Next() {
 		var book StructureData.Book
 		var genres []string
@@ -152,11 +174,27 @@ func (store *PostgresBookStore) GetAllBooks() []StructureData.Book {
 			continue
 		}
 		book.Genres = genres
-		book.Author = StructureData.Author{ID: authorID}
+
+		// Retrieve full author details
+		author, authErr := authorStore.GetAuthor(authorID)
+		if authErr == nil {
+			book.Author = author
+		} else {
+			log.Printf("Warning: Author ID %d not found for book %d: %v", authorID, book.ID, authErr)
+		}
+
+		// Retrieve and set review stats
+		reviewStore := GetPostgresReviewStoreInstance()
+		stats, statsErr := reviewStore.GetBookReviewStats(book.ID)
+		if statsErr == nil {
+			book.ReviewStats = &stats
+		}
+
 		books = append(books, book)
 	}
 	return books
 }
+
 
 // SearchBooks retrieves all books and filters them in memory based on search criteria.
 func (store *PostgresBookStore) SearchBooks(criteria StructureData.BookSearchCriteria) ([]StructureData.Book, *StructureData.ErrorResponse) {

@@ -1,69 +1,43 @@
-// File: Controllers/book.go
 package Controllers
 
 import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
+	"time"
 
 	inmemoryStores "finalProject/InmemoryStores"
-	postgresStores "finalProject/postgresStores"
 	"finalProject/StructureData"
+	postgresStores "finalProject/postgresStores"
 )
 
-// JSON file path for book persistence.
-var bookFile = "books.json"
-
-// InitializeBookFile ensures the JSON file for books exists and loads data into both the in-memory and PostgreSQL stores.
 func InitializeBookFile() {
-	pgStore := postgresStores.GetPostgresBookStoreInstance()
-    existingBooks := pgStore.GetAllBooks()
-    if len(existingBooks) > 0 {
-        log.Println("Books already exist in PostgreSQL; skipping JSON initialization for Books.")
-        return
+    pgStore := postgresStores.GetPostgresBookStoreInstance()
+    memStore := inmemoryStores.GetBookStoreInstance()
+
+    pgBooks := pgStore.GetAllBooks()
+    
+    if len(memStore.GetAllBooks()) == 0 {
+        for _, book := range pgBooks {
+            _, err := memStore.CreateBook(book)
+            if err != nil {
+                log.Printf("Error loading book %d into memory: %v", book.ID, err.Message)
+            }
+        }
+        log.Printf("Loaded %d books from PostgreSQL into memory", len(pgBooks))
     }
-	if _, err := os.Stat(bookFile); os.IsNotExist(err) {
-		file, _ := os.Create(bookFile)
-		file.Write([]byte("[]"))
-		file.Close()
-	} else {
-		file, err := os.Open(bookFile)
-		if err != nil {
-			panic("Failed to open book file")
-		}
-		defer file.Close()
-
-		var books []StructureData.Book
-		if err := json.NewDecoder(file).Decode(&books); err != nil {
-			panic("Failed to decode book file")
-		}
-
-		store := inmemoryStores.GetBookStoreInstance()
-		pgStore := postgresStores.GetPostgresBookStoreInstance()
-		for _, book := range books {
-			store.CreateBook(book) // This uses AddBookDirectly below or CreateBook with explicit ID.
-			log.Printf("Book with ID %d loaded into store (Stock: %d)", book.ID, book.Stock)
-			_, errResp := pgStore.CreateBook(book)
-			if errResp != nil {
-				log.Printf("Error persisting book ID %d to PostgreSQL: %v", book.ID, errResp.Message)
-			}
-		}
-	}
 }
 
-// GetAllBooks handles the GET /books request.
 func GetAllBooks(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetBookStoreInstance()
+	store := postgresStores.GetPostgresBookStoreInstance() // use Postgres store
 	books := store.GetAllBooks()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(books)
 }
 
-// GetBookByID handles the GET /books/{id} request.
 func GetBookByID(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetBookStoreInstance()
+	store := postgresStores.GetPostgresBookStoreInstance() // use Postgres store
 	idStr := r.URL.Path[len("/books/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -81,71 +55,76 @@ func GetBookByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(book)
 }
 
-// CreateBook handles the POST /books request.
-// (For synchronization you might want to create in PostgreSQL first as shown in other controllers.)
+// BookInput is used for creating a new book.
+type BookInput struct {
+	Title       string    `json:"title"`
+	AuthorID    int       `json:"author_id"`
+	Genres      []string  `json:"genres"`
+	PublishedAt time.Time `json:"published_at"`
+	Price       float64   `json:"price"`
+	Stock       int       `json:"stock"`
+	// You can omit review_stats since those are computed later.
+}
+
 func CreateBook(w http.ResponseWriter, r *http.Request) {
 	bookStore := inmemoryStores.GetBookStoreInstance()
-	authorStore := inmemoryStores.GetAuthorStoreInstance()
-	pgStore := postgresStores.GetPostgresBookStoreInstance()
+	pgBookStore := postgresStores.GetPostgresBookStoreInstance()
+	pgAuthorStore := postgresStores.GetPostgresAuthorStoreInstance()
 
-	var book StructureData.Book
-	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
+	var input BookInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid input"})
 		return
 	}
 
-	if book.Stock < 1 {
+	// Validate stock.
+	if input.Stock < 1 {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Stock must be at least 1"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Stock must be ≥1"})
 		return
 	}
 
-	// Check if the author exists.
-	authors := authorStore.GetAllAuthors()
-	authorExists := false
-	for _, existingAuthor := range authors {
-		if existingAuthor.FirstName == book.Author.FirstName &&
-			existingAuthor.LastName == book.Author.LastName &&
-			existingAuthor.Bio == book.Author.Bio {
-			book.Author = existingAuthor // Link existing author.
-			authorExists = true
-			break
-		}
+	// Look up the author in PostgreSQL using the provided author_id.
+	if input.AuthorID == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Author ID is required"})
+		return
+	}
+	author, errResp := pgAuthorStore.GetAuthor(input.AuthorID)
+	if errResp != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Author not found"})
+		return
 	}
 
-	if !authorExists {
-		createdAuthor, errResp := authorStore.CreateAuthor(book.Author)
-		if errResp != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(errResp)
-			return
-		}
-		book.Author = createdAuthor
-		if err := persistAuthorsToFile(authorStore); err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving author data"})
-			return
-		}
+	// Build the Book struct. We ignore any incoming book ID and set CreatedAt to now.
+	book := StructureData.Book{
+		Title:       input.Title,
+		Author:      author, // now using the looked‑up author
+		Genres:      input.Genres,
+		PublishedAt: input.PublishedAt,
+		Price:       input.Price,
+		Stock:       input.Stock,
+		CreatedAt:   time.Now(),
 	}
 
-	// Create in PostgreSQL first (optional for synchronization).
-	createdPgBook, pgErr := pgStore.CreateBook(book)
+	// Create the book in PostgreSQL.
+	createdPgBook, pgErr := pgBookStore.CreateBook(book)
 	if pgErr != nil {
-		log.Printf("Error persisting book to PostgreSQL: %v", pgErr.Message)
-		// You may choose to return an error here.
+		log.Printf("Error creating book in PostgreSQL: %v", pgErr.Message)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(pgErr)
+		return
 	}
-	// Now create in the in-memory store using the PostgreSQL book (which carries the synchronized ID).
+
+	// Create the book in the in-memory store.
 	createdBook, errResp := bookStore.CreateBook(createdPgBook)
 	if errResp != nil {
+		// Roll back PostgreSQL creation if needed.
+		pgBookStore.DeleteBook(createdPgBook.ID)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(errResp)
-		return
-	}
-
-	if err := persistBooksToFile(bookStore.GetAllBooks()); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving book data"})
 		return
 	}
 
@@ -153,76 +132,91 @@ func CreateBook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(createdBook)
 }
 
-// (The UpdateBook, DeleteBook, and SearchBooks functions remain unchanged.)
-
-// persistBooksToFile saves all books to the JSON file in a pretty JSON format.
-func persistBooksToFile(books []StructureData.Book) error {
-	file, err := os.Create(bookFile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(books)
-}
-
-
-// UpdateBook handles the PUT /books/{id} request.
 func UpdateBook(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetBookStoreInstance()
-	pgStore := postgresStores.GetPostgresBookStoreInstance()
+    // Get instances of the in-memory and PostgreSQL BookStores,
+    // and the in-memory OrderStore.
+    bookStore := inmemoryStores.GetBookStoreInstance()
+    pgBookStore := postgresStores.GetPostgresBookStoreInstance()
+    orderStore := inmemoryStores.GetOrderStoreInstance()
 
-	idStr := r.URL.Path[len("/books/"):]
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid book ID"})
-		return
-	}
+    // Extract book ID from URL.
+    idStr := r.URL.Path[len("/books/"):]
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid book ID"})
+        return
+    }
 
-	var book StructureData.Book
-	if err := json.NewDecoder(r.Body).Decode(&book); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid input"})
-		return
-	}
+    // Check if the book is referenced by any orders.
+    orders := orderStore.GetAllOrders()
+    for _, order := range orders {
+        for _, item := range order.Items {
+            if item.Book.ID == id {
+                w.WriteHeader(http.StatusConflict)
+                json.NewEncoder(w).Encode(StructureData.ErrorResponse{
+                    Message: "Cannot update book that exists in existing orders",
+                })
+                return
+            }
+        }
+    }
 
-	// Validate stock.
-	if book.Stock < 1 {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Stock must be at least 1"})
-		return
-	}
+    // Retrieve the existing book from the in-memory store to preserve its author.
+    existingBook, errResp := bookStore.GetBook(id)
+    if errResp != nil {
+        w.WriteHeader(http.StatusNotFound)
+        json.NewEncoder(w).Encode(errResp)
+        return
+    }
 
-	updatedBook, errResp := store.UpdateBook(id, book)
-	if errResp != nil {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(errResp)
-		return
-	}
+    // Decode the updated book data from the request body.
+    var updatedBook StructureData.Book
+    if err := json.NewDecoder(r.Body).Decode(&updatedBook); err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid input"})
+        return
+    }
 
-	if err := persistBooksToFile(store.GetAllBooks()); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving data"})
-		return
-	}
+    // Prevent author update by preserving the existing author.
+    updatedBook.Author = existingBook.Author
 
-	_, pgErr := pgStore.UpdateBook(id, updatedBook)
-	if pgErr != nil {
-		log.Printf("Error updating book in PostgreSQL: %v", pgErr.Message)
-	}
+    // Validate stock.
+    if updatedBook.Stock < 1 {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Stock must be ≥1"})
+        return
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(updatedBook)
+    // Update the book in PostgreSQL first.
+    pgUpdatedBook, pgErr := pgBookStore.UpdateBook(id, updatedBook)
+    if pgErr != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(pgErr)
+        return
+    }
+
+    // Then update the in-memory store to synchronize.
+    finalBook, errResp := bookStore.UpdateBook(id, pgUpdatedBook)
+    if errResp != nil {
+        // If in-memory update fails, you might consider rolling back the PG update.
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(errResp)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(finalBook)
 }
 
-// DeleteBook handles the DELETE /books/{id} request.
-func DeleteBook(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetBookStoreInstance()
-	orderStore := inmemoryStores.GetOrderStoreInstance()
-	pgStore := postgresStores.GetPostgresBookStoreInstance()
 
+func DeleteBook(w http.ResponseWriter, r *http.Request) {
+	// Get the necessary store instances.
+	bookStore := inmemoryStores.GetBookStoreInstance()
+	orderStore := inmemoryStores.GetOrderStoreInstance()
+	pgBookStore := postgresStores.GetPostgresBookStoreInstance()
+
+	// Extract the book ID from the URL.
 	idStr := r.URL.Path[len("/books/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -231,33 +225,28 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the book is linked to any orders.
+	// Check if the book is referenced in any orders.
 	orders := orderStore.GetAllOrders()
 	for _, order := range orders {
 		for _, item := range order.Items {
 			if item.Book.ID == id {
 				w.WriteHeader(http.StatusConflict)
-				json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Book cannot be deleted as it is linked to existing orders"})
+				json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Book linked to orders"})
 				return
 			}
 		}
 	}
 
-	errResp := store.DeleteBook(id)
+	// Delete the book from the in-memory store.
+	errResp := bookStore.DeleteBook(id)
 	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(errResp)
 		return
 	}
 
-	if err := persistBooksToFile(store.GetAllBooks()); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving data"})
-		return
-	}
-
-	// Delete from PostgreSQL.
-	pgErr := pgStore.DeleteBook(id)
+	// Delete the book from PostgreSQL.
+	pgErr := pgBookStore.DeleteBook(id)
 	if pgErr != nil {
 		log.Printf("Error deleting book from PostgreSQL: %v", pgErr.Message)
 	}
@@ -265,14 +254,13 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// SearchBooks handles the POST /books/search request.
+
 func SearchBooks(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetBookStoreInstance()
-
 	var criteria StructureData.BookSearchCriteria
 	if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid search criteria"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid criteria"})
 		return
 	}
 
@@ -286,5 +274,3 @@ func SearchBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(searchResults)
 }
-
-

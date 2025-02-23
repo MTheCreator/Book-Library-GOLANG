@@ -3,138 +3,38 @@ package Controllers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+
 	"log"
 	"net/http"
-	"os"
 	"sort"
 	"strconv"
 	"time"
 
 	inmemoryStores "finalProject/InmemoryStores"
-	postgresStores "finalProject/postgresStores"
 	"finalProject/StructureData"
-)
-
-// JSON file paths.
-var (
-	orderFile       = "orders.json"
-	salesReportFile = "sales_reports.json"
+	postgresStores "finalProject/postgresStores"
 )
 
 func InitializeOrderFile() {
-	// Get the PostgreSQL order store and check for existing orders.
 	pgStore := postgresStores.GetPostgresOrderStoreInstance()
-	existingOrders := pgStore.GetAllOrders()
-	if len(existingOrders) > 0 {
-		log.Println("Orders already exist in PostgreSQL; skipping JSON initialization for orders.")
-		return
-	}
-
-	// Check if the orders JSON file exists; if not, create an empty one.
-	if _, err := os.Stat(orderFile); os.IsNotExist(err) {
-		file, err := os.Create(orderFile)
-		if err != nil {
-			log.Fatalf("Failed to create order file: %v", err)
-		}
-		file.Write([]byte("[]"))
-		file.Close()
-		log.Println("No order file existed; created empty orders JSON file.")
-		return
-	}
-
-	// Open the JSON file for reading.
-	file, err := os.Open(orderFile)
-	if err != nil {
-		log.Fatalf("Failed to open order file: %v", err)
-	}
-	defer file.Close()
-
-	// Decode the orders from JSON.
-	var orders []StructureData.Order
-	if err := json.NewDecoder(file).Decode(&orders); err != nil {
-		log.Fatalf("Failed to decode order file: %v", err)
-	}
-	log.Printf("Loaded %d orders from JSON.", len(orders))
-
-	// Get the in-memory store (and related stores) to validate order data.
 	memStore := inmemoryStores.GetOrderStoreInstance()
-	customerStore := inmemoryStores.GetCustomerStoreInstance()
-	bookStore := inmemoryStores.GetBookStoreInstance()
 
-	var failedOrders []StructureData.Order
+	// Load PostgreSQL orders into memory
+	pgOrders := pgStore.GetAllOrders()
 
-	// Iterate over the loaded orders.
-	for _, order := range orders {
-		// Validate the customer.
-		customer, customerErr := customerStore.GetCustomer(order.Customer.ID)
-		if customerErr != nil {
-			log.Printf("Skipping order ID %d: Customer with ID %d not found", order.ID, order.Customer.ID)
-			failedOrders = append(failedOrders, order)
-			continue
-		}
-		order.Customer = customer
-
-		// Validate each order item: check that each referenced book exists.
-		validOrder := true
-		for i, item := range order.Items {
-			book, bookErr := bookStore.GetBook(item.Book.ID)
-			if bookErr != nil {
-				log.Printf("Skipping order ID %d: Book with ID %d not found", order.ID, item.Book.ID)
-				validOrder = false
-				break
+	// Only initialize if memory store is empty
+	if len(memStore.GetAllOrders()) == 0 {
+		for _, order := range pgOrders {
+			_, err := memStore.CreateOrder(order)
+			if err != nil {
+				log.Printf("Error loading order %d into memory: %v", order.ID, err.Message)
 			}
-			// Update the item’s book info with the one from the store.
-			order.Items[i].Book = book
 		}
-		if !validOrder {
-			failedOrders = append(failedOrders, order)
-			continue
-		}
-
-		// Create the order in the in-memory store (if needed) and then persist to PostgreSQL.
-		createdOrder, errResp := memStore.CreateOrder(order)
-		if errResp != nil {
-			log.Printf("Error creating order in memory (order ID %d): %v", order.ID, errResp.Message)
-			failedOrders = append(failedOrders, order)
-			continue
-		}
-
-		// Now persist the order (and its items) to PostgreSQL.
-		createdOrder, errResp = pgStore.CreateOrder(createdOrder)
-		if errResp != nil {
-			log.Printf("Error persisting order ID %d to PostgreSQL: %v", createdOrder.ID, errResp.Message)
-			failedOrders = append(failedOrders, createdOrder)
-			continue
-		}
-
-		log.Printf("Order ID %d loaded from JSON and inserted into PostgreSQL.", createdOrder.ID)
-	}
-
-	if len(failedOrders) > 0 {
-		log.Println("Some orders failed to load. Persisting failed orders for debugging.")
-		saveFailedOrders(failedOrders)
-	} else {
-		log.Println("All orders loaded successfully from JSON into PostgreSQL.")
+		log.Printf("Loaded %d orders from PostgreSQL into memory", len(pgOrders))
 	}
 }
 
-// Helper to persist failed orders.
-func saveFailedOrders(orders []StructureData.Order) {
-	file, err := os.Create("failed_orders.json")
-	if err != nil {
-		log.Printf("Failed to create failed_orders.json: %v", err)
-		return
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(orders); err != nil {
-		log.Printf("Failed to persist failed orders: %v", err)
-	}
-}
-
-// GetAllOrders handles GET /orders.
 func GetAllOrders(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetOrderStoreInstance()
 	orders := store.GetAllOrders()
@@ -142,7 +42,6 @@ func GetAllOrders(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(orders)
 }
 
-// GetOrderByID handles GET /orders/{id}.
 func GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetOrderStoreInstance()
 	idStr := r.URL.Path[len("/orders/"):]
@@ -162,11 +61,13 @@ func GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(order)
 }
 
+
 func CreateOrder(w http.ResponseWriter, r *http.Request) {
 	orderStore := inmemoryStores.GetOrderStoreInstance()
 	customerStore := inmemoryStores.GetCustomerStoreInstance()
 	bookStore := inmemoryStores.GetBookStoreInstance()
-	pgStore := postgresStores.GetPostgresOrderStoreInstance() // PostgreSQL store instance
+	pgStore := postgresStores.GetPostgresOrderStoreInstance()
+	pgBookStore := postgresStores.GetPostgresBookStoreInstance()
 
 	var order StructureData.Order
 	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
@@ -175,12 +76,11 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Default status to "pending" if not provided.
 	if order.Status == "" {
 		order.Status = StructureData.OrderStatusPending
 	}
 
-	// Validate customer.
+	// Validate customer exists in memory.
 	customer, errResp := customerStore.GetCustomer(order.Customer.ID)
 	if errResp != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -189,24 +89,43 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	order.Customer = customer
 
-	// Validate books and adjust stock.
 	validItems := []StructureData.OrderItem{}
 	for _, item := range order.Items {
+		// Attempt to fetch the book from the in-memory store.
 		book, bookErr := bookStore.GetBook(item.Book.ID)
+		log.Println(book)
+		// If not found in memory, try PostgreSQL.
 		if bookErr != nil {
-			log.Printf("Skipping book ID %d: Does not exist", item.Book.ID)
-			continue
+			pgBook, pgErrResp := pgBookStore.GetBook(item.Book.ID)
+			log.Println(pgBook)
+			if pgErrResp != nil {
+				// If not found in PostgreSQL either, skip this item.
+				continue
+			}
+			// Add the book from PostgreSQL into the in-memory store.
+			_, memErr := bookStore.CreateBook(pgBook)
+			if memErr != nil {
+				continue
+			}
+			book = pgBook
 		}
+		// Check if the requested quantity is available.
 		if item.Quantity > book.Stock || book.Stock == 0 {
-			log.Printf("Skipping book ID %d: Insufficient stock (stock=%d)", book.ID, book.Stock)
 			continue
 		}
 		// Deduct stock.
 		book.Stock -= item.Quantity
+
+		// Update the book in both stores.
 		_, updateErr := bookStore.UpdateBook(book.ID, book)
 		if updateErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Failed to update book stock"})
+			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Failed to update book stock in memory"})
+			return
+		}
+		if _, pgUpdateErr := pgBookStore.UpdateBook(book.ID, book); pgUpdateErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Failed to update book stock in PostgreSQL"})
 			return
 		}
 		item.Book = book
@@ -214,13 +133,12 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(validItems) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "No valid books available to create the order"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "No valid books available"})
 		return
 	}
 	order.Items = validItems
 	order.CreatedAt = time.Now()
 
-	// Create order in PostgreSQL first.
 	createdPgOrder, errResp := pgStore.CreateOrder(order)
 	if errResp != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -228,20 +146,11 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Now create the order in the in-memory store using the PostgreSQL order (with synchronized ID).
 	createdOrder, errResp := orderStore.CreateOrder(createdPgOrder)
 	if errResp != nil {
-		// Optionally rollback PostgreSQL order if needed.
 		pgStore.DeleteOrder(createdPgOrder.ID)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(errResp)
-		return
-	}
-
-	// Persist orders to JSON.
-	if err := persistOrdersToFile(orderStore.GetAllOrders()); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving order data to JSON"})
 		return
 	}
 
@@ -250,12 +159,12 @@ func CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 
-// UpdateOrder handles PUT /orders/{id}.
 func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	orderStore := inmemoryStores.GetOrderStoreInstance()
 	customerStore := inmemoryStores.GetCustomerStoreInstance()
 	bookStore := inmemoryStores.GetBookStoreInstance()
-	pgStore := postgresStores.GetPostgresOrderStoreInstance() // PostgreSQL store instance
+	pgStore := postgresStores.GetPostgresOrderStoreInstance()
+	pgBookStore := postgresStores.GetPostgresBookStoreInstance()
 
 	idStr := r.URL.Path[len("/orders/"):]
 	id, err := strconv.Atoi(idStr)
@@ -264,6 +173,7 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid order ID"})
 		return
 	}
+
 	existingOrder, errResp := orderStore.GetOrder(id)
 	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -271,10 +181,9 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prevent updates on successful orders.
 	if existingOrder.Status == StructureData.OrderStatusSuccess {
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Successful orders cannot be updated"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Cannot update successful orders"})
 		return
 	}
 
@@ -287,26 +196,21 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 
 	customer, errResp := customerStore.GetCustomer(updatedOrder.Customer.ID)
 	if errResp != nil {
-		for _, existingCustomer := range customerStore.GetAllCustomers() {
-			if existingCustomer.Email == updatedOrder.Customer.Email {
-				customer = existingCustomer
-				break
-			}
-		}
-		if customer.ID == 0 {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Customer does not exist"})
-			return
-		}
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Customer does not exist"})
+		return
 	}
 	updatedOrder.Customer = customer
 
-	// Revert stock for the existing order.
+	// Revert stock for existing order items.
 	for _, item := range existingOrder.Items {
 		book, bookErr := bookStore.GetBook(item.Book.ID)
 		if bookErr == nil {
 			book.Stock += item.Quantity
+			// Update in-memory.
 			_, _ = bookStore.UpdateBook(book.ID, book)
+			// Also update in PostgreSQL.
+			_, _ = pgBookStore.UpdateBook(book.ID, book)
 		}
 	}
 
@@ -314,18 +218,23 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	for _, item := range updatedOrder.Items {
 		book, bookErr := bookStore.GetBook(item.Book.ID)
 		if bookErr != nil {
-			log.Printf("Skipping book ID %d: Does not exist", item.Book.ID)
 			continue
 		}
 		if item.Quantity > book.Stock || book.Stock == 0 {
-			log.Printf("Skipping book ID %d: Insufficient stock (stock=%d)", book.ID, book.Stock)
 			continue
 		}
 		book.Stock -= item.Quantity
+		// Update in-memory.
 		_, updateErr := bookStore.UpdateBook(book.ID, book)
 		if updateErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Failed to update book stock"})
+			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Failed to update book stock in memory"})
+			return
+		}
+		// Update in PostgreSQL.
+		if _, pgUpdateErr := pgBookStore.UpdateBook(book.ID, book); pgUpdateErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Failed to update book stock in PostgreSQL"})
 			return
 		}
 		item.Book = book
@@ -333,23 +242,16 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(validItems) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "No valid books available to update the order"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "No valid books available"})
 		return
 	}
 	updatedOrder.Items = validItems
 	updatedOrder.CreatedAt = existingOrder.CreatedAt
 
-	// Update the order.
 	updatedOrder, errResp = orderStore.UpdateOrder(id, updatedOrder)
 	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(errResp)
-		return
-	}
-
-	if err := persistOrdersToFile(orderStore.GetAllOrders()); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving order data to JSON"})
 		return
 	}
 
@@ -362,11 +264,11 @@ func UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedOrder)
 }
 
-// DeleteOrder handles DELETE /orders/{id}.
 func DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	orderStore := inmemoryStores.GetOrderStoreInstance()
 	bookStore := inmemoryStores.GetBookStoreInstance()
-	pgStore := postgresStores.GetPostgresOrderStoreInstance() // PostgreSQL store instance
+	pgStore := postgresStores.GetPostgresOrderStoreInstance()
+	pgBookStore := postgresStores.GetPostgresBookStoreInstance()
 
 	idStr := r.URL.Path[len("/orders/"):]
 	id, err := strconv.Atoi(idStr)
@@ -375,6 +277,7 @@ func DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid order ID"})
 		return
 	}
+
 	order, errResp := orderStore.GetOrder(id)
 	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
@@ -382,38 +285,26 @@ func DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prevent deletion of successful orders.
 	if order.Status == StructureData.OrderStatusSuccess {
 		w.WriteHeader(http.StatusForbidden)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Successful orders cannot be deleted"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Cannot delete successful orders"})
 		return
 	}
 
-	// Restore book stock.
 	for _, item := range order.Items {
 		book, bookErr := bookStore.GetBook(item.Book.ID)
 		if bookErr != nil {
-			log.Printf("Warning: Book with ID %d not found while deleting order %d", item.Book.ID, id)
 			continue
 		}
 		book.Stock += item.Quantity
-		_, updateErr := bookStore.UpdateBook(book.ID, book)
-		if updateErr != nil {
-			log.Printf("Error updating stock for book ID %d: %s", book.ID, updateErr.Message)
-			continue
-		}
+		_, _ = bookStore.UpdateBook(book.ID, book)
+		_, _ = pgBookStore.UpdateBook(book.ID, book)
 	}
 
 	errResp = orderStore.DeleteOrder(id)
 	if errResp != nil {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(errResp)
-		return
-	}
-
-	if err := persistOrdersToFile(orderStore.GetAllOrders()); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error saving order data to JSON"})
 		return
 	}
 
@@ -425,7 +316,6 @@ func DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// SearchOrders handles POST /orders/search.
 func SearchOrders(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetOrderStoreInstance()
 	var criteria StructureData.OrderSearchCriteria
@@ -444,189 +334,145 @@ func SearchOrders(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(searchResults)
 }
 
-func persistOrdersToFile(orders []StructureData.Order) error {
-	file, err := os.Create(orderFile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(orders)
-}
-
 func GenerateSalesReport(ctx context.Context) {
-	store := inmemoryStores.GetOrderStoreInstance()
-	endTime := time.Now()
+	// Use the PostgreSQL order and sales report stores.
+	orderStore := postgresStores.GetPostgresOrderStoreInstance()
+	reportStore := postgresStores.GetPostgresSalesReportStoreInstance()
+
+	// Use local time for the report window.
+	nowLocal := time.Now() // local time
+	endTime := nowLocal
 	startTime := endTime.Add(-24 * time.Hour)
-	orders, err := store.GetOrdersInTimeRange(startTime, endTime)
-	if err != nil {
-		log.Printf("Error fetching orders for sales report: %v\n", err)
-		return
-	}
-	if len(orders) == 0 {
-		log.Println("No orders found for the sales report generation.")
-		report := StructureData.SalesReport{
-			Timestamp:       endTime,
-			TotalRevenue:    0,
-			TotalOrders:     0,
-			TopSellingBooks: []StructureData.TopSellingBook{},
-		}
-		if err := SaveSalesReport(ctx, report); err != nil {
-			log.Printf("Error saving empty sales report: %v\n", err)
-		}
-		return
-	}
-	var totalRevenue float64
-	var totalOrders int
-	bookSales := make(map[int]*StructureData.TopSellingBook)
-	bookStore := inmemoryStores.GetBookStoreInstance()
+
+	var report StructureData.SalesReport
+	report.Timestamp = endTime
+	// Initialize a map to accumulate revenue and quantity per book.
+	bookRevenueMap := make(map[int]*StructureData.TopSellingBook)
+
+	orders := orderStore.GetAllOrders()
+	
+	log.Printf("[Report] Local Time Range: %s to %s",
+		startTime.Format(time.RFC3339),
+		endTime.Format(time.RFC3339),
+	)
+
 	for _, order := range orders {
-		select {
-		case <-ctx.Done():
-			log.Println("GenerateSalesReport was canceled.")
-			return
-		default:
+		// Convert order.CreatedAt to local time.
+		orderTimeLocal := order.CreatedAt.Local().Add(-1 * time.Hour)
+
+		log.Printf("[Order %d] Created (Local): %s | Status: %s | Total: $%.2f",
+			order.ID,
+			orderTimeLocal.Format(time.RFC3339),
+			order.Status,
+			order.TotalPrice,
+		)
+
+		// Check if order is within the local time window.
+		if orderTimeLocal.Before(startTime) || orderTimeLocal.After(endTime) {
+			log.Printf("[Excluded] Order %d - Reason: %s",
+				order.ID,
+				getExclusionReason(orderTimeLocal, startTime, endTime),
+			)
+			continue
 		}
-		totalRevenue += order.TotalPrice
-		totalOrders++
+
+		log.Printf("[Included] Order %d - Within time window", order.ID)
+		report.TotalOrders++
+		report.TotalRevenue += order.TotalPrice
+
+		// Count order status if needed.
+		switch order.Status {
+		case StructureData.OrderStatusSuccess:
+			report.SuccessfulOrders++
+		case StructureData.OrderStatusPending:
+			report.PendingOrders++
+		}
+		log.Println(order.Items)
+		// Process each order item.
 		for _, item := range order.Items {
-			select {
-			case <-ctx.Done():
-				log.Println("GenerateSalesReport was canceled.")
-				return
-			default:
-			}
-			book, bookErr := bookStore.GetBook(item.Book.ID)
-			if bookErr != nil {
-				log.Printf("Skipping order ID %d: Book ID %d not found", order.ID, item.Book.ID)
+			if item.Book.ID == 0 {
+				log.Printf("[Warning] Invalid book in order %d", order.ID)
 				continue
 			}
-			if _, exists := bookSales[book.ID]; !exists {
-				bookSales[book.ID] = &StructureData.TopSellingBook{
-					Book:         book,
-					QuantitySold: 0,
+
+			// Calculate revenue for this item.
+			revenue := item.Book.Price * float64(item.Quantity)
+			// If we've already seen this book, update its totals.
+			if existing, exists := bookRevenueMap[item.Book.ID]; exists {
+				existing.QuantitySold += item.Quantity
+				existing.TotalRevenue += revenue
+			} else {
+				// Otherwise, create a new TopSellingBook entry.
+				bookRevenueMap[item.Book.ID] = &StructureData.TopSellingBook{
+					Book: item.Book,
+					QuantitySold: item.Quantity,
+					TotalRevenue: revenue,
 				}
 			}
-			bookSales[book.ID].QuantitySold += item.Quantity
 		}
 	}
-	topSellingBooks := make([]StructureData.TopSellingBook, 0, len(bookSales))
-	for _, bookSale := range bookSales {
-		topSellingBooks = append(topSellingBooks, *bookSale)
+
+	// Convert the map to a slice.
+	var topSellers []StructureData.TopSellingBook
+	for _, tsb := range bookRevenueMap {
+		topSellers = append(topSellers, *tsb)
 	}
-	sort.Slice(topSellingBooks, func(i, j int) bool {
-		revenueI := topSellingBooks[i].Book.Price * float64(topSellingBooks[i].QuantitySold)
-		revenueJ := topSellingBooks[j].Book.Price * float64(topSellingBooks[j].QuantitySold)
-		return revenueI > revenueJ
+
+	// Sort the top sellers by descending total revenue.
+	sort.Slice(topSellers, func(i, j int) bool {
+		return topSellers[i].TotalRevenue > topSellers[j].TotalRevenue
 	})
-	if len(topSellingBooks) > 5 {
-		topSellingBooks = topSellingBooks[:5]
-	}
-	report := StructureData.SalesReport{
-		Timestamp:       endTime,
-		TotalRevenue:    totalRevenue,
-		TotalOrders:     totalOrders,
-		TopSellingBooks: topSellingBooks,
-	}
-	if err := SaveSalesReport(ctx, report); err != nil {
-		log.Printf("Error saving sales report: %v\n", err)
-	}
-}
 
-func SaveSalesReport(ctx context.Context, report StructureData.SalesReport) error {
-	var reports []StructureData.SalesReport
-	if _, err := os.Stat(salesReportFile); !os.IsNotExist(err) {
-		file, err := os.Open(salesReportFile)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		if err := json.NewDecoder(file).Decode(&reports); err != nil {
-			return err
-		}
-	}
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	reports = append(reports, report)
-	file, err := os.Create(salesReportFile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
-	if err := encoder.Encode(reports); err != nil {
-		return err
-	}
-	log.Println("Sales report saved successfully.")
-	return nil
-}
-
-func GetSalesReport(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	var reports []StructureData.SalesReport
-	if _, err := os.Stat(salesReportFile); os.IsNotExist(err) {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "No sales reports available"})
-		return
-	}
-	file, err := os.Open(salesReportFile)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error loading sales reports file"})
-		return
-	}
-	defer file.Close()
-	if err := json.NewDecoder(file).Decode(&reports); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error decoding sales reports data"})
-		return
-	}
-	select {
-	case <-ctx.Done():
-		w.WriteHeader(http.StatusRequestTimeout)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Request canceled by client"})
-		return
-	default:
-	}
-	startDateStr := r.URL.Query().Get("start_date")
-	endDateStr := r.URL.Query().Get("end_date")
-	var filteredReports []StructureData.SalesReport
-	if startDateStr != "" && endDateStr != "" {
-		startDate, err := time.Parse("2006-01-02", startDateStr)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid start_date format. Use YYYY-MM-DD."})
-			return
-		}
-		endDate, err := time.Parse("2006-01-02", endDateStr)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid end_date format. Use YYYY-MM-DD."})
-			return
-		}
-		for _, report := range reports {
-			if report.Timestamp.After(startDate) && report.Timestamp.Before(endDate.Add(24*time.Hour)) {
-				filteredReports = append(filteredReports, report)
-			}
-		}
+	// Limit the list to at most five top-selling books.
+	if len(topSellers) > 5 {
+		report.TopSellingBooks = topSellers[:5]
 	} else {
-		filteredReports = reports
+		report.TopSellingBooks = topSellers
 	}
-	w.Header().Set("Content-Type", "application/json")
-	encoder := json.NewEncoder(w)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(filteredReports); err != nil {
+
+	log.Printf("[Report] Final Result: (Timestamp=%s, TotalRevenue=%.2f, TotalOrders=%d, PendingOrders=%d, SuccessfulOrders=%d, TopSellingBooks=%+v)",
+		report.Timestamp.Format(time.RFC3339),
+		report.TotalRevenue,
+		report.TotalOrders,
+		report.PendingOrders,
+		report.SuccessfulOrders,
+		report.TopSellingBooks,
+	)
+
+	// Save the report to PostgreSQL.
+	if _, err := reportStore.SaveSalesReport(report); err != nil {
+		log.Printf("[Error] Failed to save sales report: %v", err)
+	}
+}
+
+func getExclusionReason(orderTime, startTime, endTime time.Time) string {
+	if orderTime.Before(startTime) {
+		return fmt.Sprintf("Too old (Order: %s < Start: %s)",
+			orderTime.Format(time.RFC3339),
+			startTime.Format(time.RFC3339),
+		)
+	}
+	return fmt.Sprintf("Too new (Order: %s > End: %s)",
+		orderTime.Format(time.RFC3339),
+		endTime.Format(time.RFC3339),
+	)
+}
+
+
+// GetSalesReport handles GET /reports/sales by retrieving sales reports from PostgreSQL.
+func GetSalesReport(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	reportStore := postgresStores.GetPostgresSalesReportStoreInstance()
+
+	reports, err := reportStore.GetAllSalesReports()
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error encoding response data"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{
+			Message: "Failed to retrieve sales reports",
+		})
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(reports)
 }

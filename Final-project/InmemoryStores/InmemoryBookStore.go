@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	interfaces "finalProject/Interfaces"
+	
 	data "finalProject/StructureData"
 	"finalProject/utils"
 )
@@ -110,13 +111,13 @@ func (store *InMemoryBookStore) GetAllBooks() []data.Book {
 	return books
 }
 
-// SearchBooks filters books based on the search criteria
 func (store *InMemoryBookStore) SearchBooks(criteria data.BookSearchCriteria) ([]data.Book, *data.ErrorResponse) {
 	store.mu.RLock()
 	defer store.mu.RUnlock()
 
 	var result []data.Book
 	for _, book := range store.books {
+		// Filter by basic book fields.
 		if len(criteria.IDs) > 0 && !utils.ContainsInt(criteria.IDs, book.ID) {
 			continue
 		}
@@ -147,11 +148,34 @@ func (store *InMemoryBookStore) SearchBooks(criteria data.BookSearchCriteria) ([
 		if !utils.MatchAuthorCriteria(book.Author, criteria.AuthorCriteria) {
 			continue
 		}
+
+		// Optional: Filter by review statistics.
+		// Use 0 as default if ReviewStats is nil.
+		avgRating := 0.0
+		reviewCount := 0
+		if book.ReviewStats != nil {
+			avgRating = book.ReviewStats.AverageRating
+			reviewCount = book.ReviewStats.ReviewCount
+		}
+		if criteria.MinAverageRating > 0 && avgRating < criteria.MinAverageRating {
+			continue
+		}
+		if criteria.MaxAverageRating > 0 && avgRating > criteria.MaxAverageRating {
+			continue
+		}
+		if criteria.MinReviewCount > 0 && reviewCount < criteria.MinReviewCount {
+			continue
+		}
+		if criteria.MaxReviewCount > 0 && reviewCount > criteria.MaxReviewCount {
+			continue
+		}
+
 		result = append(result, book)
 	}
 
 	return result, nil
 }
+
 func (store *InMemoryBookStore) AddBookDirectly(book data.Book) {
 	store.mu.Lock()
 	defer store.mu.Unlock()

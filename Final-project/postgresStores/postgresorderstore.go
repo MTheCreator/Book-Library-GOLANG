@@ -237,15 +237,21 @@ func (store *PostgresOrderStore) GetAllOrders() []StructureData.Order {
 			log.Printf("Error scanning order: %v", err)
 			continue
 		}
-		// Fetch order items for each order.
-		queryItems := `SELECT book_id, quantity FROM order_items WHERE order_id=$1`
-		itemRows, err := store.db.Query(queryItems, order.ID)
+
+		// Join order_items with books to get full book details for each item.
+		itemQuery := `
+			SELECT oi.book_id, oi.quantity, b.title, b.price, b.stock
+			FROM order_items oi
+			LEFT JOIN books b ON oi.book_id = b.id
+			WHERE oi.order_id = $1`
+		itemRows, err := store.db.Query(itemQuery, order.ID)
 		if err != nil {
 			log.Printf("Error querying order items for order ID %d: %v", order.ID, err)
 		} else {
 			for itemRows.Next() {
 				var item StructureData.OrderItem
-				err = itemRows.Scan(&item.Book.ID, &item.Quantity)
+				// Scan additional book details (title, price, stock) into the Book sub-struct.
+				err = itemRows.Scan(&item.Book.ID, &item.Quantity, &item.Book.Title, &item.Book.Price, &item.Book.Stock)
 				if err != nil {
 					log.Printf("Error scanning order item for order ID %d: %v", order.ID, err)
 					continue
@@ -259,6 +265,7 @@ func (store *PostgresOrderStore) GetAllOrders() []StructureData.Order {
 	log.Printf("Retrieved %d orders", len(orders))
 	return orders
 }
+
 
 // SearchOrders filters orders based on the provided criteria.
 func (store *PostgresOrderStore) SearchOrders(criteria StructureData.OrderSearchCriteria) ([]StructureData.Order, *StructureData.ErrorResponse) {

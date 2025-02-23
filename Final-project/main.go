@@ -183,6 +183,20 @@ func main() {
 		w.Write([]byte("Sales report generated successfully"))
 	})
 
+	//Review Routes
+	router.POST("/reviews", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		controllers.CreateReview(w, r)
+	})
+	// For getting reviews by book, we assume the book ID is passed as a query parameter (e.g., /reviews?book_id=1)
+	router.GET("/reviews", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		controllers.GetReviewsByBook(w, r)
+	})
+	router.DELETE("/reviews/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		r.URL.Path = "/reviews/" + ps.ByName("id")
+		controllers.DeleteReview(w, r)
+	})
+
+
 	// Create and start the HTTP server.
 	server := &http.Server{Addr: ":8080", Handler: router}
 	go func() {

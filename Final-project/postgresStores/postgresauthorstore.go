@@ -79,7 +79,27 @@ func (store *PostgresAuthorStore) GetAuthor(id int) (StructureData.Author, *Stru
 	}
 	return author, nil
 }
+func (s *PostgresAuthorStore) GetAuthorByDetails(firstName, lastName, bio string) (StructureData.Author, *StructureData.ErrorResponse) {
+	var author StructureData.Author
+	err := s.db.QueryRow(
+		"SELECT id, first_name, last_name, bio FROM authors WHERE first_name = $1 AND last_name = $2 AND bio = $3",
+		firstName,
+		lastName,
+		bio,
+	).Scan(&author.ID, &author.FirstName, &author.LastName, &author.Bio)
 
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return StructureData.Author{}, &StructureData.ErrorResponse{
+				Message: "Author not found",
+			}
+		}
+		return StructureData.Author{}, &StructureData.ErrorResponse{
+			Message: fmt.Sprintf("Database error: %v", err),
+		}
+	}
+	return author, nil
+}
 // UpdateAuthor updates an existing author in the database.
 func (store *PostgresAuthorStore) UpdateAuthor(id int, author StructureData.Author) (StructureData.Author, *StructureData.ErrorResponse) {
 	query := `UPDATE authors SET first_name=$1, last_name=$2, bio=$3 WHERE id=$4`

@@ -10,25 +10,26 @@ import (
 
 	inmemoryStores "finalProject/InmemoryStores"
 	"finalProject/StructureData"
+	"finalProject/auth"
 	postgresStores "finalProject/postgresStores"
 )
 
 func InitializeCustomerFile() {
-    pgStore := postgresStores.GetPostgresCustomerStoreInstance()
-    memStore := inmemoryStores.GetCustomerStoreInstance()
-    
-    pgCustomers := pgStore.GetAllCustomers()
-    
-    // Only initialize if memory store is empty
-    if len(memStore.GetAllCustomers()) == 0 {
-        for _, customer := range pgCustomers {
-            _, err := memStore.CreateCustomer(customer)
-            if err != nil {
-                log.Printf("Error loading customer %d into memory: %v", customer.ID, err.Message)
-            }
-        }
-        log.Printf("Loaded %d customers from PostgreSQL into memory", len(pgCustomers))
-    }
+	pgStore := postgresStores.GetPostgresCustomerStoreInstance()
+	memStore := inmemoryStores.GetCustomerStoreInstance()
+
+	pgCustomers := pgStore.GetAllCustomers()
+
+	// Only initialize if memory store is empty
+	if len(memStore.GetAllCustomers()) == 0 {
+		for _, customer := range pgCustomers {
+			_, err := memStore.CreateCustomer(customer)
+			if err != nil {
+				log.Printf("Error loading customer %d into memory: %v", customer.ID, err.Message)
+			}
+		}
+		log.Printf("Loaded %d customers from PostgreSQL into memory", len(pgCustomers))
+	}
 }
 func GetAllCustomers(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetCustomerStoreInstance()
@@ -107,48 +108,77 @@ func CreateCustomer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ensure required fields are provided.
-	if customer.Name == "" || customer.Email == "" {
+	// Ensure required fields are provided
+	if customer.Name == "" || customer.Email == "" || customer.Password == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Name and Email required"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Name, Email, and Password are required"})
 		return
 	}
 
-	// Overwrite the CreatedAt field with the current time.
-	customer.CreatedAt = time.Now()
+	// Hash the password before storing
+	err := customer.HashPassword(customer.Password)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error hashing password"})
+		return
+	}
 
-	// Check if the email already exists.
+	// Check if the email already exists
 	existingCustomers := pgStore.GetAllCustomers()
 	for _, existingCustomer := range existingCustomers {
 		if existingCustomer.Email == customer.Email {
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Email exists"})
+			json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Email already exists"})
 			return
 		}
 	}
 
-	// Create customer in PostgreSQL.
+	// Set the CreatedAt field
+	customer.CreatedAt = time.Now()
+
+	// Save to PostgreSQL
 	createdPgCustomer, pgErr := pgStore.CreateCustomer(customer)
 	if pgErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error creating customer"})
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error creating customer in PostgreSQL"})
 		return
 	}
 
-	// Create customer in the in-memory store.
-	createdCustomer, errResp := store.CreateCustomer(createdPgCustomer)
+	// Save to in-memory store
+	_, errResp := store.CreateCustomer(createdPgCustomer)
 	if errResp != nil {
-		// Optionally roll back the PostgreSQL insertion.
+		// Roll back PostgreSQL insert if needed
 		pgStore.DeleteCustomer(createdPgCustomer.ID)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(errResp)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(createdCustomer)
-}
+	// Generate JWT token for the newly created user
+	token, jwtErr := auth.GenerateJWT(createdPgCustomer.ID, createdPgCustomer.Email, createdPgCustomer.Username)
+	if jwtErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Error generating JWT token"})
+		return
+	}
 
+	// Return the customer info + token
+	response := map[string]interface{}{
+		"message": "Customer created successfully",
+		"token":   token,
+		"customer": map[string]interface{}{
+			"id":         createdPgCustomer.ID,
+			"name":       createdPgCustomer.Name,
+			"email":      createdPgCustomer.Email,
+			"username":   createdPgCustomer.Username,
+			"created_at": createdPgCustomer.CreatedAt,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
 
 func UpdateCustomer(w http.ResponseWriter, r *http.Request) {
 	// Retrieve store instances.
@@ -199,7 +229,6 @@ func UpdateCustomer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedMemCustomer)
 }
-
 
 func SearchCustomers(w http.ResponseWriter, r *http.Request) {
 	store := inmemoryStores.GetCustomerStoreInstance()

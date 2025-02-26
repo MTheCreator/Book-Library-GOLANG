@@ -196,7 +196,6 @@ func main() {
 		controllers.DeleteReview(w, r)
 	})
 
-
 	// Create and start the HTTP server.
 	server := &http.Server{Addr: ":8080", Handler: router}
 	go func() {

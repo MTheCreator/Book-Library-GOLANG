@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"finalProject/StructureData"
 	"fmt"
+
 	_ "github.com/lib/pq"
 )
 
@@ -13,9 +14,11 @@ type PostgresCustomerStore struct {
 }
 
 var postgresCustomerStoreInstance *PostgresCustomerStore
+
 func (store *PostgresCustomerStore) Close() error {
 	return store.db.Close()
 }
+
 // GetPostgresCustomerStoreInstance returns a singleton instance.
 func GetPostgresCustomerStoreInstance() *PostgresCustomerStore {
 	if postgresCustomerStoreInstance == nil {
@@ -39,12 +42,14 @@ func (store *PostgresCustomerStore) CreateCustomer(customer StructureData.Custom
 	var args []interface{}
 
 	if customer.ID != 0 {
-		query = `INSERT INTO customers (id, name, email, street, city, state, postal_code, country, created_at)
-		          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`
+		query = `INSERT INTO customers (id, name, username, email, password, street, city, state, postal_code, country, created_at)
+		          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`
 		args = []interface{}{
 			customer.ID,
 			customer.Name,
+			customer.Username,
 			customer.Email,
+			customer.Password,
 			customer.Address.Street,
 			customer.Address.City,
 			customer.Address.State,
@@ -53,11 +58,13 @@ func (store *PostgresCustomerStore) CreateCustomer(customer StructureData.Custom
 			customer.CreatedAt,
 		}
 	} else {
-		query = `INSERT INTO customers (name, email, street, city, state, postal_code, country, created_at)
-		          VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
+		query = `INSERT INTO customers (name, username, email, password, street, city, state, postal_code, country, created_at)
+		          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
 		args = []interface{}{
 			customer.Name,
+			customer.Username,
 			customer.Email,
+			customer.Password,
 			customer.Address.Street,
 			customer.Address.City,
 			customer.Address.State,
@@ -78,7 +85,7 @@ func (store *PostgresCustomerStore) CreateCustomer(customer StructureData.Custom
 func (store *PostgresCustomerStore) GetCustomer(id int) (StructureData.Customer, *StructureData.ErrorResponse) {
 	var customer StructureData.Customer
 	var street, city, state, postalCode, country string
-	query := `SELECT id, name, email, street, city, state, postal_code, country, created_at FROM customers WHERE id=$1`
+	query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers WHERE id=$1`
 	row := store.db.QueryRow(query, id)
 	err := row.Scan(&customer.ID, &customer.Name, &customer.Email,
 		&street, &city, &state, &postalCode, &country, &customer.CreatedAt)
@@ -100,11 +107,10 @@ func (store *PostgresCustomerStore) GetCustomer(id int) (StructureData.Customer,
 
 // GetAllCustomers, UpdateCustomer, DeleteCustomer, and SearchCustomers remain unchanged.
 
-
 // GetAllCustomers retrieves all customers from the database.
 func (store *PostgresCustomerStore) GetAllCustomers() []StructureData.Customer {
 	customers := []StructureData.Customer{}
-	query := `SELECT id, name, email, street, city, state, postal_code, country, created_at FROM customers`
+	query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers`
 	rows, err := store.db.Query(query)
 	if err != nil {
 		return customers
@@ -132,9 +138,10 @@ func (store *PostgresCustomerStore) GetAllCustomers() []StructureData.Customer {
 
 // UpdateCustomer updates an existing customer in the database.
 func (store *PostgresCustomerStore) UpdateCustomer(id int, customer StructureData.Customer) (StructureData.Customer, *StructureData.ErrorResponse) {
-	query := `UPDATE customers SET name=$1, email=$2, street=$3, city=$4, state=$5, postal_code=$6, country=$7 WHERE id=$8`
+	query := `UPDATE customers SET name=$1, username=$2, email=$3, street=$4, city=$5, state=$6, postal_code=$7, country=$8 WHERE id=$9`
 	res, err := store.db.Exec(query,
 		customer.Name,
+		customer.Username,
 		customer.Email,
 		customer.Address.Street,
 		customer.Address.City,

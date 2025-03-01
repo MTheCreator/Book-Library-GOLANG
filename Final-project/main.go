@@ -79,6 +79,10 @@ func main() {
 	// Create a new router.
 	router := httprouter.New()
 
+	router.POST("/login", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		controllers.GenerateToken(w, r, p)
+	})
+
 	// Customer Routes
 	router.GET("/customers", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		controllers.GetAllCustomers(w, r)

@@ -1,10 +1,11 @@
 package Controllers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"finalProject/StructureData"
 	"finalProject/auth"
-	"finalProject/database"
+	postgresStores "finalProject/postgresStores"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -15,20 +16,27 @@ type TokenRequest struct {
 	Password string `json:"password"`
 }
 
+// GenerateToken authenticates the user and generates a JWT token
 func GenerateToken(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	store := postgresStores.GetPostgresCustomerStoreInstance()
+
 	var request TokenRequest
 	var user StructureData.Customer
-
 	// Decode JSON request body
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, `{"error": "invalid request body"}`, http.StatusBadRequest)
 		return
 	}
 
-	// Find user in database
-	record := database.Instance.Where("email = ?", request.Email).First(&user)
-	if record.Error != nil {
+	// Query user from the database
+	query := "SELECT id, email, username, password FROM customers WHERE email = $1"
+	row := store.DB.QueryRow(query, request.Email)
+	err := row.Scan(&user.ID, &user.Email, &user.Username, &user.Password)
+	if err == sql.ErrNoRows {
 		http.Error(w, `{"error": "user not found"}`, http.StatusUnauthorized)
+		return
+	} else if err != nil {
+		http.Error(w, `{"error": "database error"}`, http.StatusInternalServerError)
 		return
 	}
 

@@ -6,7 +6,6 @@ import (
 	"finalProject/StructureData"
 	"fmt"
 	"log"
-	
 
 	"github.com/lib/pq"
 )
@@ -74,9 +73,6 @@ func (store *PostgresBookStore) CreateBook(book StructureData.Book) (StructureDa
 	return book, nil
 }
 
-// (Other methods remain unchanged.)
-
-
 func (store *PostgresBookStore) GetBook(id int) (StructureData.Book, *StructureData.ErrorResponse) {
 	var book StructureData.Book
 	var genres []string
@@ -115,7 +111,6 @@ func (store *PostgresBookStore) GetBook(id int) (StructureData.Book, *StructureD
 
 	return book, nil
 }
-
 
 // UpdateBook updates an existing book in the database.
 func (store *PostgresBookStore) UpdateBook(id int, book StructureData.Book) (StructureData.Book, *StructureData.ErrorResponse) {
@@ -194,7 +189,6 @@ func (store *PostgresBookStore) GetAllBooks() []StructureData.Book {
 	}
 	return books
 }
-
 
 // SearchBooks retrieves all books and filters them in memory based on search criteria.
 func (store *PostgresBookStore) SearchBooks(criteria StructureData.BookSearchCriteria) ([]StructureData.Book, *StructureData.ErrorResponse) {

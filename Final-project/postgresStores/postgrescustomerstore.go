@@ -4,34 +4,38 @@ import (
 	"database/sql"
 	"finalProject/StructureData"
 	"fmt"
+	"sync"
 
 	_ "github.com/lib/pq"
 )
 
 // PostgresCustomerStore implements the customer store using PostgreSQL.
 type PostgresCustomerStore struct {
-	db *sql.DB
+	DB *sql.DB
 }
 
-var postgresCustomerStoreInstance *PostgresCustomerStore
+var (
+	postgresCustomerStoreInstance *PostgresCustomerStore
+	once                          sync.Once
+)
 
 func (store *PostgresCustomerStore) Close() error {
-	return store.db.Close()
+	return store.DB.Close()
 }
 
 // GetPostgresCustomerStoreInstance returns a singleton instance.
 func GetPostgresCustomerStoreInstance() *PostgresCustomerStore {
-	if postgresCustomerStoreInstance == nil {
+	once.Do(func() { // Ensures it runs only once
 		connStr := "user=postgres password=root dbname=booklibrary sslmode=disable"
-		db, err := sql.Open("postgres", connStr)
+		DB, err := sql.Open("postgres", connStr)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to connect to Postgres: %v", err))
 		}
-		if err := db.Ping(); err != nil {
+		if err := DB.Ping(); err != nil {
 			panic(fmt.Sprintf("Failed to ping Postgres: %v", err))
 		}
-		postgresCustomerStoreInstance = &PostgresCustomerStore{db: db}
-	}
+		postgresCustomerStoreInstance = &PostgresCustomerStore{DB: DB}
+	})
 	return postgresCustomerStoreInstance
 }
 
@@ -74,7 +78,7 @@ func (store *PostgresCustomerStore) CreateCustomer(customer StructureData.Custom
 		}
 	}
 
-	err := store.db.QueryRow(query, args...).Scan(&customer.ID)
+	err := store.DB.QueryRow(query, args...).Scan(&customer.ID)
 	if err != nil {
 		return StructureData.Customer{}, &StructureData.ErrorResponse{Message: fmt.Sprintf("Failed to insert customer: %v", err)}
 	}
@@ -86,7 +90,7 @@ func (store *PostgresCustomerStore) GetCustomer(id int) (StructureData.Customer,
 	var customer StructureData.Customer
 	var street, city, state, postalCode, country string
 	query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers WHERE id=$1`
-	row := store.db.QueryRow(query, id)
+	row := store.DB.QueryRow(query, id)
 	err := row.Scan(&customer.ID, &customer.Name, &customer.Email,
 		&street, &city, &state, &postalCode, &country, &customer.CreatedAt)
 	if err != nil {
@@ -111,7 +115,7 @@ func (store *PostgresCustomerStore) GetCustomer(id int) (StructureData.Customer,
 func (store *PostgresCustomerStore) GetAllCustomers() []StructureData.Customer {
 	customers := []StructureData.Customer{}
 	query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers`
-	rows, err := store.db.Query(query)
+	rows, err := store.DB.Query(query)
 	if err != nil {
 		return customers
 	}
@@ -139,7 +143,7 @@ func (store *PostgresCustomerStore) GetAllCustomers() []StructureData.Customer {
 // UpdateCustomer updates an existing customer in the database.
 func (store *PostgresCustomerStore) UpdateCustomer(id int, customer StructureData.Customer) (StructureData.Customer, *StructureData.ErrorResponse) {
 	query := `UPDATE customers SET name=$1, username=$2, email=$3, street=$4, city=$5, state=$6, postal_code=$7, country=$8 WHERE id=$9`
-	res, err := store.db.Exec(query,
+	res, err := store.DB.Exec(query,
 		customer.Name,
 		customer.Username,
 		customer.Email,
@@ -164,7 +168,7 @@ func (store *PostgresCustomerStore) UpdateCustomer(id int, customer StructureDat
 // DeleteCustomer removes a customer from the database.
 func (store *PostgresCustomerStore) DeleteCustomer(id int) *StructureData.ErrorResponse {
 	query := `DELETE FROM customers WHERE id=$1`
-	res, err := store.db.Exec(query, id)
+	res, err := store.DB.Exec(query, id)
 	if err != nil {
 		return &StructureData.ErrorResponse{Message: fmt.Sprintf("Failed to delete customer: %v", err)}
 	}

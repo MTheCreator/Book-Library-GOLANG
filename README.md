@@ -92,18 +92,22 @@ Final-project/
 ### 1. Customer Management  
 Create, update, retrieve, delete, and search customers.  
 
-Example JSON for creating a customer:  
+Example JSON for registrating a customer:  
 ```json
 {
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "address": {
-    "street": "123 Elm St",
-    "city": "Springfield",
-    "state": "IL",
-    "postal_code": "62701"
-  }
+    "name": "Ahmed Said",
+    "username": "Ahmed__",
+    "email": "a.said@example.com",
+    "password": "SecurePass123",
+    "address": {
+        "street": "Moulay Rachid",
+        "city": "Benguerir",
+        "state": "Marrakech-Safi",
+        "postal_code": "43150",
+        "country": "MAR"
+    }
 }
+
 ```
 
 ### 2. Author Management  

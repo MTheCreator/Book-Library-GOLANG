@@ -1,18 +1,18 @@
 package StructureData
 
 import (
+	"encoding/json"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 type Customer struct {
-	gorm.Model
+	
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
-	Username  string    `json:"username" gorm:"unique"`
-	Email     string    `json:"email" gorm:"unique"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
 	Password  string    `json:"password"`
 	Address   Address   `json:"address"`
 	CreatedAt time.Time `json:"created_at"`
@@ -42,4 +42,16 @@ func (user *Customer) CheckPassword(providedPassword string) error {
 		return err
 	}
 	return nil
+}
+// Override JSON marshaling to mask the password
+func (c Customer) MarshalJSON() ([]byte, error) {
+	// Create a temporary struct to avoid recursion
+	type Alias Customer
+	return json.Marshal(&struct {
+		Password string `json:"password"` // Override the Password field
+		*Alias
+	}{
+		Password: "...", // Always set to "..."
+		Alias:    (*Alias)(&c),
+	})
 }

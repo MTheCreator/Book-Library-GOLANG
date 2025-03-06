@@ -32,31 +32,50 @@ func InitializeCustomerFile() {
 	}
 }
 func GetAllCustomers(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetCustomerStoreInstance()
-	customers := store.GetAllCustomers()
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(customers)
+
+    pgStore := postgresStores.GetPostgresCustomerStoreInstance()
+
+    // Fetch latest customers from PostgreSQL
+    pgCustomers := pgStore.GetAllCustomers()
+
+    
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(pgCustomers)
 }
 
 func GetCustomerByID(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetCustomerStoreInstance()
-	idStr := r.URL.Path[len("/customers/"):]
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid customer ID"})
-		return
-	}
+    memStore := inmemoryStores.GetCustomerStoreInstance()
+    pgStore := postgresStores.GetPostgresCustomerStoreInstance()
 
-	customer, errResp := store.GetCustomer(id)
-	if errResp != nil {
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(errResp)
-		return
-	}
+    idStr := r.URL.Path[len("/customers/"):]
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid customer ID"})
+        return
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(customer)
+    // Check in-memory store first
+    customer, errResp := memStore.GetCustomer(id)
+    if errResp == nil {
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(customer)
+        return
+    }
+
+    // Fallback to PostgreSQL if not found in-memory
+    pgCustomer, pgErr := pgStore.GetCustomer(id)
+    if pgErr != nil {
+        w.WriteHeader(http.StatusNotFound)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Customer not found"})
+        return
+    }
+
+    // Add to in-memory store for future requests
+    memStore.CreateCustomer(pgCustomer)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(pgCustomer)
 }
 
 func DeleteCustomer(w http.ResponseWriter, r *http.Request) {
@@ -229,23 +248,40 @@ func UpdateCustomer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(updatedMemCustomer)
 }
-
 func SearchCustomers(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetCustomerStoreInstance()
-	var criteria StructureData.CustomerSearchCriteria
-	if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid criteria"})
-		return
-	}
+    pgStore := postgresStores.GetPostgresCustomerStoreInstance()
+    memStore := inmemoryStores.GetCustomerStoreInstance()
 
-	searchResults, errResp := store.SearchCustomers(criteria)
-	if errResp != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errResp)
-		return
-	}
+    var criteria StructureData.CustomerSearchCriteria
+    if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid criteria"})
+        return
+    }
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(searchResults)
+    // Search in PostgreSQL for accurate results
+    pgResults, pgErr := pgStore.SearchCustomers(criteria)
+    if pgErr != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(pgErr)
+        return
+    }
+
+    // Update in-memory store with the found customers
+    for _, customer := range pgResults {
+        existing, err := memStore.GetCustomer(customer.ID)
+        if err != nil {
+            memStore.CreateCustomer(customer)
+        } else if !customersEqual(existing, customer) {
+            memStore.UpdateCustomer(customer.ID, customer)
+        }
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(pgResults)
+}
+
+// Helper function to check customer equality
+func customersEqual(a, b StructureData.Customer) bool {
+    return a.Name == b.Name && a.Email == b.Email && a.Username == b.Username
 }

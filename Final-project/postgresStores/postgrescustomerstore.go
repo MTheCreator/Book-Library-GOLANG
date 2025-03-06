@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"finalProject/StructureData"
 	"fmt"
+	"log"
 	"sync"
 
 	_ "github.com/lib/pq"
@@ -87,57 +88,80 @@ func (store *PostgresCustomerStore) CreateCustomer(customer StructureData.Custom
 
 // GetCustomer retrieves a customer by its ID.
 func (store *PostgresCustomerStore) GetCustomer(id int) (StructureData.Customer, *StructureData.ErrorResponse) {
-	var customer StructureData.Customer
-	var street, city, state, postalCode, country string
-	query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers WHERE id=$1`
-	row := store.DB.QueryRow(query, id)
-	err := row.Scan(&customer.ID, &customer.Name, &customer.Email,
-		&street, &city, &state, &postalCode, &country, &customer.CreatedAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return StructureData.Customer{}, &StructureData.ErrorResponse{Message: "Customer not found"}
-		}
-		return StructureData.Customer{}, &StructureData.ErrorResponse{Message: fmt.Sprintf("Error fetching customer: %v", err)}
-	}
-	customer.Address = StructureData.Address{
-		Street:     street,
-		City:       city,
-		State:      state,
-		PostalCode: postalCode,
-		Country:    country,
-	}
-	return customer, nil
+    var customer StructureData.Customer
+    var street, city, state, postalCode, country string
+    query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers WHERE id=$1`
+    row := store.DB.QueryRow(query, id)
+    // Include &customer.Username in Scan
+    err := row.Scan(
+        &customer.ID,
+        &customer.Name,
+        &customer.Username, // <-- Add this
+        &customer.Email,
+        &street,
+        &city,
+        &state,
+        &postalCode,
+        &country,
+        &customer.CreatedAt,
+    )
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return StructureData.Customer{}, &StructureData.ErrorResponse{Message: "Customer not found"}
+        }
+        return StructureData.Customer{}, &StructureData.ErrorResponse{Message: fmt.Sprintf("Error fetching customer: %v", err)}
+    }
+    customer.Address = StructureData.Address{
+        Street:     street,
+        City:       city,
+        State:      state,
+        PostalCode: postalCode,
+        Country:    country,
+    }
+    return customer, nil
 }
 
-// GetAllCustomers, UpdateCustomer, DeleteCustomer, and SearchCustomers remain unchanged.
 
 // GetAllCustomers retrieves all customers from the database.
 func (store *PostgresCustomerStore) GetAllCustomers() []StructureData.Customer {
-	customers := []StructureData.Customer{}
-	query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers`
-	rows, err := store.DB.Query(query)
-	if err != nil {
-		return customers
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var customer StructureData.Customer
-		var street, city, state, postalCode, country string
-		err := rows.Scan(&customer.ID, &customer.Name, &customer.Email,
-			&street, &city, &state, &postalCode, &country, &customer.CreatedAt)
-		if err != nil {
-			continue
-		}
-		customer.Address = StructureData.Address{
-			Street:     street,
-			City:       city,
-			State:      state,
-			PostalCode: postalCode,
-			Country:    country,
-		}
-		customers = append(customers, customer)
-	}
-	return customers
+    customers := []StructureData.Customer{}
+    query := `SELECT id, name, username, email, street, city, state, postal_code, country, created_at FROM customers`
+    rows, err := store.DB.Query(query)
+    if err != nil {
+        log.Printf("Error querying customers: %v", err) // Add logging
+        return customers
+    }
+    defer rows.Close()
+    for rows.Next() {
+        var customer StructureData.Customer
+        var street, city, state, postalCode, country string
+        // Include &customer.Username in Scan
+        err := rows.Scan(
+            &customer.ID,
+            &customer.Name,
+            &customer.Username, // <-- Add this
+            &customer.Email,
+            &street,
+            &city,
+            &state,
+            &postalCode,
+            &country,
+            &customer.CreatedAt,
+        )
+        if err != nil {
+            log.Printf("Error scanning customer row: %v", err) // Add logging
+            continue
+        }
+        customer.Address = StructureData.Address{
+            Street:     street,
+            City:       city,
+            State:      state,
+            PostalCode: postalCode,
+            Country:    country,
+        }
+        customers = append(customers, customer)
+    }
+    return customers
 }
 
 // UpdateCustomer updates an existing customer in the database.

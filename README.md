@@ -64,7 +64,6 @@ Final-project/
 ├── go.mod               # Go module file for dependencies
 ├── go.sum               # Go dependency checksum file
 ├── main.go              # Main entry point for the application
-├── orders.json          # Sample data for orders
 ├── users.json           # Sample users for testing
 └── sales_reports.json   # Sample sales report data
 ```

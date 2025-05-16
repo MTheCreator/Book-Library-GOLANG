@@ -1,8 +1,4 @@
-Here is the markdown documentation for the newly provided files:
-
----
-
-# Project Documentation
+# Project Documentation (Deprecated)
 
 ## CustomerStore.go
 
@@ -86,7 +82,3 @@ type BookStore interface {
     SearchBooks(criteria data.BookSearchCriteria) ([]data.Book, *data.ErrorResponse)
 }
 ```
-
----
-
-This documentation outlines the core interfaces for managing customers, orders, authors, and books, detailing the methods provided in each interface.

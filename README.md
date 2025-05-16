@@ -250,9 +250,25 @@ We welcome contributions! Please follow these steps:
 4. Open a **Pull Request**.  
 
 ---
+## Development Status
+
+### Authentication & Authorization
+- Basic signup/login endpoints implemented with JWT issuance.
+- Role-based authorization checks in place for protected routes.
+- Core modules compile and run without errors.
+- No automated tests yet—potential bugs remain unverified.
+
+### Testing
+- Unit and integration test suites are pending.
+- CI/CD pipeline and coverage metrics are not configured.
+
+### Dockerization
+- Initial Dockerfile and `docker-compose.yml` scaffolds created.
+- Local container build and run attempts completed but not production-ready.
+- Further work and expertise required to finalize a reliable, optimized Docker setup.
 
 ## License
-
+---
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 

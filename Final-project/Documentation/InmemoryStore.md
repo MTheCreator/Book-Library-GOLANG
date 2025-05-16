@@ -1,8 +1,4 @@
-Here is the markdown documentation for the newly provided files:
-
----
-
-# Project Documentation
+# Project Documentation (Deprecated)
 
 ## InmemoryBookStore.go
 
@@ -111,7 +107,3 @@ type InMemoryAuthorStore struct {
 - `UpdateAuthor(id int, author data.Author)`: Updates an author's details.
 - `DeleteAuthor(id int)`: Removes an author from the store.
 - `SearchAuthors(criteria data.AuthorSearchCriteria)`: Filters authors based on search criteria.
-
----
-
-This documentation provides a detailed overview of the in-memory store implementations for books, customers, orders, and authors. 

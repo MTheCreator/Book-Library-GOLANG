@@ -317,21 +317,21 @@ func DeleteOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func SearchOrders(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetOrderStoreInstance()
-	var criteria StructureData.OrderSearchCriteria
-	if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid search criteria"})
-		return
-	}
-	searchResults, errResp := store.SearchOrders(criteria)
-	if errResp != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errResp)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(searchResults)
+    pgStore := postgresStores.GetPostgresOrderStoreInstance() // Use PostgreSQL
+    var criteria StructureData.OrderSearchCriteria
+    if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid search criteria"})
+        return
+    }
+    searchResults, errResp := pgStore.SearchOrders(criteria) // Query PostgreSQL
+    if errResp != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(errResp)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(searchResults)
 }
 
 func GenerateSalesReport(ctx context.Context) {

@@ -256,21 +256,19 @@ func DeleteBook(w http.ResponseWriter, r *http.Request) {
 
 
 func SearchBooks(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetBookStoreInstance()
-	var criteria StructureData.BookSearchCriteria
-	if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid criteria"})
-		return
-	}
-
-	searchResults, errResp := store.SearchBooks(criteria)
-	if errResp != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errResp)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(searchResults)
+    pgStore := postgresStores.GetPostgresBookStoreInstance() // Use PostgreSQL
+    var criteria StructureData.BookSearchCriteria
+    if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid criteria"})
+        return
+    }
+    searchResults, errResp := pgStore.SearchBooks(criteria) // Query PostgreSQL
+    if errResp != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(errResp)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(searchResults)
 }

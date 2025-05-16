@@ -214,19 +214,19 @@ func DeleteAuthor(w http.ResponseWriter, r *http.Request) {
 
 
 func SearchAuthors(w http.ResponseWriter, r *http.Request) {
-	store := inmemoryStores.GetAuthorStoreInstance()
-	var criteria StructureData.AuthorSearchCriteria
-	if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid criteria"})
-		return
-	}
-	authors, errResp := store.SearchAuthors(criteria)
-	if errResp != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(errResp)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(authors)
+    pgStore := postgresStores.GetPostgresAuthorStoreInstance() // Use PostgreSQL
+    var criteria StructureData.AuthorSearchCriteria
+    if err := json.NewDecoder(r.Body).Decode(&criteria); err != nil {
+        w.WriteHeader(http.StatusBadRequest)
+        json.NewEncoder(w).Encode(StructureData.ErrorResponse{Message: "Invalid criteria"})
+        return
+    }
+    authors, errResp := pgStore.SearchAuthors(criteria) // Query PostgreSQL
+    if errResp != nil {
+        w.WriteHeader(http.StatusInternalServerError)
+        json.NewEncoder(w).Encode(errResp)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(authors)
 }

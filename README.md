@@ -157,6 +157,76 @@ Example request for retrieving sales reports:
 ```http
 GET /reports/sales?start_date=2025-01-01&end_date=2025-01-31
 ```
+---
+
+## API Endpoints
+
+### Authentication & Authorization
+- Most customer endpoints are protected. Only **Admins** can access certain routes (e.g., get all customers)
+
+### Customer Routes
+
+| Method | Endpoint             | Description                                     |
+|--------|----------------------|-------------------------------------------------|
+| GET    | /customers           | Get a list of all customers (Admin only).       |
+| GET    | /customers/:id       | Get details of a specific customer by ID.       |
+| POST   | /customers           | Create a new customer.                          |
+| PUT    | /customers/:id       | Update a customer’s information.                |
+| DELETE | /customers/:id       | Delete a customer by ID.                        |
+| POST   | /customers/search    | Search customers based on filter criteria.      |
+
+
+### Author Routes
+
+| Method | Endpoint           | Description                                     |
+|--------|--------------------|-------------------------------------------------|
+| GET    | /authors           | Get a list of all authors.                      |
+| GET    | /authors/:id       | Get details of a specific author by ID.         |
+| POST   | /authors           | Create a new author.                            |
+| PUT    | /authors/:id       | Update author information.                      |
+| DELETE | /authors/:id       | Delete an author by ID.                         |
+| POST   | /authors/search    | Search authors based on filter criteria.        |
+
+
+### Book Routes
+
+| Method | Endpoint         | Description                                     |
+|--------|------------------|-------------------------------------------------|
+| GET    | /books           | Get a list of all books.                        |
+| GET    | /books/:id       | Get details of a specific book by ID.          |
+| POST   | /books           | Create a new book.                              |
+| PUT    | /books/:id       | Update book information.                        |
+| DELETE | /books/:id       | Delete a book by ID.                            |
+| POST   | /books/search    | Search books based on filter criteria.         |
+
+
+### Order Routes
+
+| Method | Endpoint          | Description                                     |
+|--------|-------------------|-------------------------------------------------|
+| GET    | /orders           | Get a list of all orders.                       |
+| GET    | /orders/:id       | Get details of a specific order by ID.         |
+| POST   | /orders           | Create a new order.                             |
+| PUT    | /orders/:id       | Update an order by ID.                          |
+| DELETE | /orders/:id       | Delete an order by ID.                          |
+| POST   | /orders/search    | Search orders based on filter criteria.        |
+
+
+### Report Routes
+
+| Method | Endpoint                   | Description                                     |
+|--------|----------------------------|-------------------------------------------------|
+| GET    | /reports/sales             | Retrieve sales report summary.                  |
+| POST   | /reports/sales/generate    | Generate a new sales report.                    |
+
+
+### Review Routes
+
+| Method | Endpoint          | Description                                     |
+|--------|-------------------|-------------------------------------------------|
+| POST   | /reviews          | Add a new review to a book.                     |
+| GET    | /reviews          | Get all reviews for a specific book (via `book_id` query). |
+| DELETE | /reviews/:id      | Delete a review by ID.                          |
 
 ---
 

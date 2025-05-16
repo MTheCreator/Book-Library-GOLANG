@@ -1,7 +1,3 @@
-Here is the markdown documentation for the provided utility functions file:
-
----
-
 # Project Documentation
 
 ## utilFunctions.go
@@ -43,7 +39,3 @@ func MatchAuthorCriteria(author data.Author, criteria data.AuthorSearchCriteria)
   - Author ID matches one of the specified IDs.
   - Author's first name or last name matches specified names.
   - Author's bio contains specified keywords (case-insensitive).
-
----
-
-This documentation provides an overview of the utility functions that are used to simplify operations like searching and filtering. 

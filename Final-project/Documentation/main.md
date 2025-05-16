@@ -1,7 +1,3 @@
-Here is the markdown documentation for the provided `main.go` file:
-
----
-
 # Project Documentation
 
 ## main.go
@@ -83,7 +79,3 @@ This file serves as the entry point of the application, configuring and starting
 - **Sales Report Generation**:
   - Runs every 24 hours.
   - Logs and generates sales reports based on recent orders.
-
----
-
-This documentation outlines the structure and functionality of the `main.go` file, detailing the endpoints and server lifecycle.

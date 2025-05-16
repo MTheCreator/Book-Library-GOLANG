@@ -47,9 +47,10 @@ This project is a **Bookstore Management System** built using **Go**. It provide
 
 ---
 
-## Folder Structure (For Now)
+## Folder Structure (As of last update)
 ```
 Final-project/
+├── Auth/                # Authorization related codes
 ├── Controllers/         # Logic for handling requests and routing
 ├── Documentation/       # Project documentation files
 ├── InmemoryStores/      # In-memory data storage (for testing)
@@ -64,6 +65,7 @@ Final-project/
 ├── go.sum               # Go dependency checksum file
 ├── main.go              # Main entry point for the application
 ├── orders.json          # Sample data for orders
+├── users.json           # Sample users for testing
 └── sales_reports.json   # Sample sales report data
 ```
 
@@ -97,12 +99,14 @@ Example JSON for creating a customer:
 {
   "name": "John Doe",
   "email": "john.doe@example.com",
+  "password": "/* Enter your user's password */"
   "address": {
     "street": "123 Elm St",
     "city": "Springfield",
     "state": "IL",
     "postal_code": "62701"
-  }
+  },
+  "role" : /* Should be either 'admin' for administrator or 'user' for regular users*/
 }
 ```
 
@@ -160,8 +164,9 @@ GET /reports/sales?start_date=2025-01-01&end_date=2025-01-31
 
 API documentation is available in the **swaggerfiles/** directory. To view it:  
 1. Run the project.  
-2. Visit `http://localhost:8080/swagger/index.html` in your browser.  
-
+2. Visit `http://localhost:8080/swagger/index.html` in your browser.
+ 
+##### (This swagger file is deprecated since there was much more that was added to the code!)
 ---
 
 ## Contributing Guidelines  

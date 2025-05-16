@@ -1,4 +1,3 @@
-// File: postgresStores/authorStore.go
 package postgresStores
 
 import (

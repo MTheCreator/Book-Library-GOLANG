@@ -1,7 +1,3 @@
-Here is the markdown documentation for the newly provided controller files:
-
----
-
 # Project Documentation
 
 ## bookController.go
@@ -84,7 +80,3 @@ This file provides HTTP handlers for managing authors, interacting with an in-me
 
 - **`InitializeAuthorFile`**: Ensures the JSON file for authors exists and loads data into the in-memory store.
 - **`persistAuthorsToFile`**: Saves all authors to a JSON file in a formatted manner.
-
----
-
-This documentation provides a structured overview of the controllers and their respective endpoints.

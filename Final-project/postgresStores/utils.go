@@ -1,4 +1,3 @@
-// utils.go
 package postgresStores
 
 import "os"

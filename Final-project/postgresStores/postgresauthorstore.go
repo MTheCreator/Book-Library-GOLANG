@@ -1,4 +1,3 @@
-// File: postgresStores/authorStore.go
 package postgresStores
 
 import (
@@ -16,7 +15,6 @@ type PostgresAuthorStore struct {
 	db *sql.DB
 }
 
-// Close gracefully closes the underlying DB connection.
 func (store *PostgresAuthorStore) Close() error {
 	return store.db.Close()
 }
@@ -24,11 +22,8 @@ func (store *PostgresAuthorStore) Close() error {
 var postgresAuthorStoreInstance *PostgresAuthorStore
 
 
-
-// GetPostgresAuthorStoreInstance returns a singleton instance of PostgresAuthorStore.
 func GetPostgresAuthorStoreInstance() *PostgresAuthorStore {
 	if postgresAuthorStoreInstance == nil {
-		// Get database connection parameters from environment variables
 		dbHost := getEnvA("DB_HOST", "localhost")
 		dbPort := getEnvA("DB_PORT", "5432")
 		dbUser := getEnvA("DB_USER", "postgres")
@@ -58,7 +53,6 @@ func getEnvA(key, fallback string) string {
 	return fallback
 }
 
-// Rest of the file remains the same...
 // CreateAuthor inserts a new author into the database.
 func (store *PostgresAuthorStore) CreateAuthor(author StructureData.Author) (StructureData.Author, *StructureData.ErrorResponse) {
 	var query string

@@ -1,4 +1,3 @@
-// File: postgresStores/orderStore.go
 package postgresStores
 
 import (

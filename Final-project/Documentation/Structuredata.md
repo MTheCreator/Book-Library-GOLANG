@@ -1,8 +1,4 @@
-Here is a detailed markdown documentation for the provided project files:
-
----
-
-# Project Documentation
+# Project Documentation (Deprecated)
 
 ## Address.go
 
@@ -261,7 +257,3 @@ type CustomerSearchCriteria struct {
     AddressCriteria AddressSearchCriteria `json:"address_criteria,omitempty"`
 }
 ```
-
---- 
-
-This documentation provides a clear and structured overview of the project's core components. 

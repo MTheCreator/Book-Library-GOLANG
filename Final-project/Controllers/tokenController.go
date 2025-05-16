@@ -47,7 +47,7 @@ func GenerateToken(w http.ResponseWriter, r *http.Request, _ httprouter.Params) 
 	}
 
 	// Generate JWT token
-	tokenString, err := auth.GenerateJWT(user.ID, user.Email, user.Username)
+	tokenString, err := auth.GenerateJWT(user.ID, user.Email, user.Username, user.Role)
 	if err != nil {
 		http.Error(w, `{"error": "failed to generate token"}`, http.StatusInternalServerError)
 		return

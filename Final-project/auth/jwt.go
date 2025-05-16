@@ -13,15 +13,18 @@ type JWTClaim struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
+	Role     string `json:"role"`
 	jwt.StandardClaims
 }
 
-func GenerateJWT(id int, email string, username string) (tokenString string, err error) {
+// GenerateJWT creates a new JWT token for a user
+func GenerateJWT(id int, email string, username string, role string) (tokenString string, err error) {
 	expirationTime := time.Now().Add(1 * time.Hour)
 	claims := &JWTClaim{
 		ID:       id,
 		Email:    email,
 		Username: username,
+		Role:     role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 		},
@@ -31,6 +34,7 @@ func GenerateJWT(id int, email string, username string) (tokenString string, err
 	return
 }
 
+// ValidateToken checks if a token is valid
 func ValidateToken(signedToken string) (err error) {
 	token, err := jwt.ParseWithClaims(
 		signedToken,
@@ -56,5 +60,9 @@ func ValidateToken(signedToken string) (err error) {
 	}
 
 	return
+}
 
+// GetJWTKey returns the JWT key for middleware and other authorized components
+func GetJWTKey() []byte {
+	return jwtKey
 }

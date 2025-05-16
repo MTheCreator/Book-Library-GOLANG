@@ -10,6 +10,7 @@ import (
 	"time"
 
 	controllers "finalProject/Controllers"
+	"finalProject/middlewares"
 	"finalProject/postgresStores" // Ensure this import path matches your project structure
 
 	"github.com/julienschmidt/httprouter"
@@ -85,94 +86,94 @@ func main() {
 
 	// Customer Routes
 	router.GET("/customers", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.GetAllCustomers(w, r)
+		middlewares.AuthorizeAdmin(controllers.GetAllCustomers)(w, r)
 	})
 	router.GET("/customers/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/customers/" + ps.ByName("id")
-		controllers.GetCustomerByID(w, r)
+		middlewares.AuthorizeAdmin(controllers.GetCustomerByID)(w, r)
 	})
 	router.POST("/customers", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		controllers.CreateCustomer(w, r)
 	})
 	router.PUT("/customers/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/customers/" + ps.ByName("id")
-		controllers.UpdateCustomer(w, r)
+		middlewares.Auth(controllers.UpdateCustomer)(w, r)
 	})
 	router.DELETE("/customers/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/customers/" + ps.ByName("id")
-		controllers.DeleteCustomer(w, r)
+		middlewares.AuthorizeAdmin(controllers.DeleteCustomer)(w, r)
 	})
 	router.POST("/customers/search", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.SearchCustomers(w, r)
+		middlewares.Auth(controllers.SearchCustomers)(w, r)
 	})
 
 	// Author Routes
 	router.GET("/authors", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.GetAllAuthors(w, r)
+		middlewares.Auth(controllers.GetAllAuthors)(w, r)
 	})
 	router.GET("/authors/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/authors/" + ps.ByName("id")
-		controllers.GetAuthorByID(w, r)
+		middlewares.Auth(controllers.GetAuthorByID)(w, r)
 	})
 	router.POST("/authors", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.CreateAuthor(w, r)
+		middlewares.AuthorizeAdmin(controllers.CreateAuthor)(w, r)
 	})
 	router.PUT("/authors/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/authors/" + ps.ByName("id")
-		controllers.UpdateAuthor(w, r)
+		middlewares.AuthorizeAdmin(controllers.UpdateAuthor)(w, r)
 	})
 	router.DELETE("/authors/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/authors/" + ps.ByName("id")
-		controllers.DeleteAuthor(w, r)
+		middlewares.AuthorizeAdmin(controllers.DeleteAuthor)(w, r)
 	})
 	router.POST("/authors/search", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.SearchAuthors(w, r)
+		middlewares.Auth(controllers.SearchAuthors)(w, r)
 	})
 
 	// Book Routes
 	router.GET("/books", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.GetAllBooks(w, r)
+		middlewares.Auth(controllers.GetAllBooks)(w, r)
 	})
 	router.GET("/books/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/books/" + ps.ByName("id")
-		controllers.GetBookByID(w, r)
+		middlewares.Auth(controllers.GetBookByID)(w, r)
 	})
 	router.POST("/books", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.CreateBook(w, r)
+		middlewares.AuthorizeAdmin(controllers.CreateBook)(w, r)
 	})
 	router.PUT("/books/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/books/" + ps.ByName("id")
-		controllers.UpdateBook(w, r)
+		middlewares.AuthorizeAdmin(controllers.UpdateBook)(w, r)
 	})
 	router.DELETE("/books/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/books/" + ps.ByName("id")
-		controllers.DeleteBook(w, r)
+		middlewares.AuthorizeAdmin(controllers.DeleteBook)(w, r)
 	})
 	router.POST("/books/search", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.SearchBooks(w, r)
+		middlewares.Auth(controllers.SearchBooks)(w, r)
 	})
 
 	// Order Routes
 	router.GET("/orders", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.GetAllOrders(w, r)
+		middlewares.AuthorizeAdmin(controllers.GetAllOrders)(w, r)
 	})
 	router.GET("/orders/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/orders/" + ps.ByName("id")
-		controllers.GetOrderByID(w, r)
+		middlewares.Auth(controllers.GetOrderByID)(w, r)
 	})
 	router.POST("/orders", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.CreateOrder(w, r)
+		middlewares.Auth(controllers.CreateOrder)(w, r)
 	})
 	router.PUT("/orders/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/orders/" + ps.ByName("id")
-		controllers.UpdateOrder(w, r)
+		middlewares.Auth(controllers.UpdateOrder)(w, r)
 	})
 	router.DELETE("/orders/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/orders/" + ps.ByName("id")
-		controllers.DeleteOrder(w, r)
+		middlewares.Auth(controllers.DeleteOrder)(w, r)
 	})
 	router.POST("/orders/search", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.SearchOrders(w, r)
+		middlewares.AuthorizeAdmin(controllers.SearchOrders)(w, r)
 	})
 
 	// Reports Routes
@@ -189,15 +190,15 @@ func main() {
 
 	//Review Routes
 	router.POST("/reviews", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.CreateReview(w, r)
+		middlewares.Auth(controllers.CreateReview)(w, r)
 	})
 	// For getting reviews by book, we assume the book ID is passed as a query parameter (e.g., /reviews?book_id=1)
 	router.GET("/reviews", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		controllers.GetReviewsByBook(w, r)
+		middlewares.Auth(controllers.GetReviewsByBook)(w, r)
 	})
 	router.DELETE("/reviews/:id", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		r.URL.Path = "/reviews/" + ps.ByName("id")
-		controllers.DeleteReview(w, r)
+		middlewares.Auth(controllers.DeleteReview)(w, r)
 	})
 
 	// Create and start the HTTP server.

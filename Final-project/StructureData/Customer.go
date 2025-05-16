@@ -8,7 +8,6 @@ import (
 )
 
 type Customer struct {
-	
 	ID        int       `json:"id"`
 	Name      string    `json:"name"`
 	Username  string    `json:"username"`
@@ -16,6 +15,7 @@ type Customer struct {
 	Password  string    `json:"password"`
 	Address   Address   `json:"address"`
 	CreatedAt time.Time `json:"created_at"`
+	Role      string    `json:"role"`
 }
 
 type CustomerSearchCriteria struct {
@@ -43,6 +43,7 @@ func (user *Customer) CheckPassword(providedPassword string) error {
 	}
 	return nil
 }
+
 // Override JSON marshaling to mask the password
 func (c Customer) MarshalJSON() ([]byte, error) {
 	// Create a temporary struct to avoid recursion
@@ -54,4 +55,9 @@ func (c Customer) MarshalJSON() ([]byte, error) {
 		Password: "...", // Always set to "..."
 		Alias:    (*Alias)(&c),
 	})
+}
+
+// IsValidRole checks if the customer's role is either "admin" or "user"
+func (c *Customer) IsValidRole() bool {
+	return c.Role == "admin" || c.Role == "user"
 }

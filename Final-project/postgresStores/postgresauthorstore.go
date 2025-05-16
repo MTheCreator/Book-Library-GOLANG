@@ -7,6 +7,7 @@ import (
 	"fmt"
 	_ "log"
 	"strings"
+	"os"
 
 	_ "github.com/lib/pq"
 )
@@ -22,10 +23,21 @@ func (store *PostgresAuthorStore) Close() error {
 
 var postgresAuthorStoreInstance *PostgresAuthorStore
 
+
+
 // GetPostgresAuthorStoreInstance returns a singleton instance of PostgresAuthorStore.
 func GetPostgresAuthorStoreInstance() *PostgresAuthorStore {
 	if postgresAuthorStoreInstance == nil {
-		connStr := "user=postgres password=root dbname=booklibrary sslmode=disable"
+		// Get database connection parameters from environment variables
+		dbHost := getEnvA("DB_HOST", "localhost")
+		dbPort := getEnvA("DB_PORT", "5432")
+		dbUser := getEnvA("DB_USER", "postgres")
+		dbPassword := getEnvA("DB_PASSWORD", "root")
+		dbName := getEnvA("DB_NAME", "booklibrary")
+
+		connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			dbHost, dbPort, dbUser, dbPassword, dbName)
+		
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to connect to Postgres: %v", err))
@@ -38,6 +50,15 @@ func GetPostgresAuthorStoreInstance() *PostgresAuthorStore {
 	return postgresAuthorStoreInstance
 }
 
+// Helper function to get environment variable with default fallback
+func getEnvA(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
+
+// Rest of the file remains the same...
 // CreateAuthor inserts a new author into the database.
 func (store *PostgresAuthorStore) CreateAuthor(author StructureData.Author) (StructureData.Author, *StructureData.ErrorResponse) {
 	var query string

@@ -2,9 +2,10 @@ package postgresStores
 
 import (
 	"database/sql"
+	"finalProject/StructureData"
 	"fmt"
 	"log"
-	"finalProject/StructureData"
+	"os"
 
 	_ "github.com/lib/pq"
 )
@@ -19,7 +20,15 @@ var postgresReviewStoreInstance *PostgresReviewStore
 // GetPostgresReviewStoreInstance returns a singleton instance of PostgresReviewStore.
 func GetPostgresReviewStoreInstance() *PostgresReviewStore {
 	if postgresReviewStoreInstance == nil {
-		connStr := "user=postgres password=root dbname=booklibrary sslmode=disable"
+		host := getEnvR("DB_HOST", "db")
+		port := getEnvR("DB_PORT", "5432")
+		user := getEnvR("DB_USER", "postgres")
+		password := getEnvR("DB_PASSWORD", "root")
+		dbname := getEnvR("DB_NAME", "booklibrary")
+		
+		connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			host, port, user, password, dbname)
+		
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to connect to Postgres for reviews: %v", err))
@@ -33,6 +42,13 @@ func GetPostgresReviewStoreInstance() *PostgresReviewStore {
 	return postgresReviewStoreInstance
 }
 
+// Helper function to get environment variables with defaults
+func getEnvR(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
 // Close gracefully closes the database connection.
 func (store *PostgresReviewStore) Close() error {
 	return store.db.Close()

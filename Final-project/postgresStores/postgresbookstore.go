@@ -6,6 +6,7 @@ import (
 	"finalProject/StructureData"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/lib/pq"
 )
@@ -22,10 +23,17 @@ func (store *PostgresBookStore) Close() error {
 
 var postgresBookStoreInstance *PostgresBookStore
 
-// GetPostgresBookStoreInstance returns a singleton instance of PostgresBookStore.
 func GetPostgresBookStoreInstance() *PostgresBookStore {
 	if postgresBookStoreInstance == nil {
-		connStr := "user=postgres password=root dbname=booklibrary sslmode=disable"
+		host := getEnvB("DB_HOST", "db")
+		port := getEnvB("DB_PORT", "5432")
+		user := getEnvB("DB_USER", "postgres")
+		password := getEnvB("DB_PASSWORD", "root")
+		dbname := getEnvB("DB_NAME", "booklibrary")
+		
+		connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			host, port, user, password, dbname)
+		
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to connect to Postgres: %v", err))
@@ -38,6 +46,13 @@ func GetPostgresBookStoreInstance() *PostgresBookStore {
 	return postgresBookStoreInstance
 }
 
+// Helper function to get environment variables with defaults
+func getEnvB(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
 // CreateBook inserts a new book into the database.
 func (store *PostgresBookStore) CreateBook(book StructureData.Book) (StructureData.Book, *StructureData.ErrorResponse) {
 	var query string

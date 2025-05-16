@@ -6,6 +6,7 @@ import (
 	"finalProject/StructureData"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -23,22 +24,31 @@ func (store *PostgresOrderStore) Close() error {
 
 var postgresOrderStoreInstance *PostgresOrderStore
 
-// GetPostgresOrderStoreInstance returns a singleton instance of PostgresOrderStore.
 func GetPostgresOrderStoreInstance() *PostgresOrderStore {
-	if postgresOrderStoreInstance == nil {
-		connStr := "user=postgres password=root dbname=booklibrary sslmode=disable"
+    if postgresOrderStoreInstance == nil {
+        host := getEnv("DB_HOST", "db")
+        port := getEnv("DB_PORT", "5432")
+        user := getEnv("DB_USER", "postgres")
+        password := getEnv("DB_PASSWORD", "root")
+        dbname := getEnv("DB_NAME", "booklibrary")
+
+        connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+            host, port, user, password, dbname)
+
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to connect to Postgres: %v", err))
-		}
-		if err := db.Ping(); err != nil {
-			panic(fmt.Sprintf("Failed to ping Postgres: %v", err))
+			log.Fatalf("Failed to connect to database: %v", err)
 		}
 		postgresOrderStoreInstance = &PostgresOrderStore{db: db}
-		log.Println("Connected to Postgres for orders.")
 	}
 	return postgresOrderStoreInstance
 }
+// Helper function to get environment variables with defaults
+func getEnv(key, fallback string) string {
+    if value, ok := os.LookupEnv(key); ok {
+        return value
+    }
+    return fallback}
 
 // CreateOrder inserts a new order and its items into the database.
 func (store *PostgresOrderStore) CreateOrder(order StructureData.Order) (StructureData.Order, *StructureData.ErrorResponse) {

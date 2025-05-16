@@ -5,6 +5,7 @@ import (
 	"finalProject/StructureData"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	_ "github.com/lib/pq"
@@ -27,7 +28,15 @@ func (store *PostgresCustomerStore) Close() error {
 // GetPostgresCustomerStoreInstance returns a singleton instance.
 func GetPostgresCustomerStoreInstance() *PostgresCustomerStore {
 	once.Do(func() { // Ensures it runs only once
-		connStr := "user=postgres password=root dbname=booklibrary sslmode=disable"
+		host := getEnvC("DB_HOST", "db")
+		port := getEnvC("DB_PORT", "5432")
+		user := getEnvC("DB_USER", "postgres")
+		password := getEnvC("DB_PASSWORD", "root")
+		dbname := getEnvC("DB_NAME", "booklibrary")
+		
+		connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			host, port, user, password, dbname)
+		
 		DB, err := sql.Open("postgres", connStr)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to connect to Postgres: %v", err))
@@ -38,6 +47,14 @@ func GetPostgresCustomerStoreInstance() *PostgresCustomerStore {
 		postgresCustomerStoreInstance = &PostgresCustomerStore{DB: DB}
 	})
 	return postgresCustomerStoreInstance
+}
+
+// Helper function to get environment variables with defaults
+func getEnvC(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
 
 // CreateCustomer inserts a new customer into PostgreSQL.

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	"finalProject/StructureData"
 
@@ -17,10 +18,17 @@ type PostgresSalesReportStore struct {
 
 var postgresSalesReportStoreInstance *PostgresSalesReportStore
 
-// GetPostgresSalesReportStoreInstance returns a singleton instance.
 func GetPostgresSalesReportStoreInstance() *PostgresSalesReportStore {
 	if postgresSalesReportStoreInstance == nil {
-		connStr := "user=postgres password=root dbname=booklibrary sslmode=disable"
+		host := getEnvS("DB_HOST", "db")
+		port := getEnvS("DB_PORT", "5432")
+		user := getEnvS("DB_USER", "postgres")
+		password := getEnvS("DB_PASSWORD", "root")
+		dbname := getEnvS("DB_NAME", "booklibrary")
+		
+		connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			host, port, user, password, dbname)
+		
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			panic(fmt.Sprintf("Failed to connect to Postgres for sales reports: %v", err))
@@ -32,6 +40,14 @@ func GetPostgresSalesReportStoreInstance() *PostgresSalesReportStore {
 		log.Println("Connected to Postgres for sales reports.")
 	}
 	return postgresSalesReportStoreInstance
+}
+
+// Helper function to get environment variables with defaults
+func getEnvS(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }
 
 // Close gracefully closes the underlying DB connection.

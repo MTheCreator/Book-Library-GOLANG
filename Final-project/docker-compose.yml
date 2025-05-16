@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=root
+      - DB_NAME=booklibrary
+    restart: unless-stopped
+    networks:
+      - booklibrary-network
+
+  # PostgreSQL Database (using existing data)
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=booklibrary
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Removed init-scripts since we're using existing data
+    restart: unless-stopped
+    networks:
+      - booklibrary-network
+
+volumes:
+  postgres-data:
+    # This tells Docker to use an existing volume instead of creating a new one
+    external: true
+    name: your_existing_postgres_volume  # Replace with your actual volume name
+
+networks:
+  booklibrary-network:
+    driver: bridge
